@@ -60,7 +60,7 @@ sequenceDiagram
     DIDService-->>AuthService: Thông Tin Hợp Lệ
     AuthService->>DB: Lấy Dữ Liệu Người Dùng
     AuthService->>Redis: Tạo Phiên
-    AuthService-->>User: Token JWT
+    AuthService-->>User: JWT Token
     User->>AuthService: Yêu Cầu API với JWT
     AuthService->>Redis: Xác Thực Phiên
     AuthService-->>User: Phản Hồi Đã Phân Quyền

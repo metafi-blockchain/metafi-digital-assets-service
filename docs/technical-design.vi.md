@@ -4,15 +4,17 @@
 
 ### 1.1 Kiến Trúc Tổng Quan
 
+### 1.1 High-Level Architecture
+
 ```mermaid
 graph TD
-    Client[Ứng Dụng Client] --> Token[Dịch Vụ Token gRPC]
-    Client --> Auth[Dịch Vụ Xác Thực gRPC]
-    Client --> DID[Dịch Vụ DID gRPC]
-    Token --> Fabric[Mạng Fabric]
+    Client[Client Application] --> Token[Token Service gRPC]
+    Client --> Auth[Auth Service gRPC]
+    Client --> DID[DID Service gRPC]
+    Token --> Fabric[Fabric Network]
     DID --> Fabric
     Auth --> Fabric
-    Token --> DB[(Cơ Sở Dữ Liệu)]
+    Token --> DB[(Database)]
     Token --> Storage[(IPFS/MinIO)]
 ```
 
