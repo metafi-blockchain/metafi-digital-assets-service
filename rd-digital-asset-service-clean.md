@@ -137,15 +137,6 @@ graph TD
 * Tương tác với Hyperledger Fabric thông qua chaincode ERC-20 hoặc Token SDK
 * Có khả năng mở rộng các chức năng như marketplace, staking, hoặc phân phối lợi nhuận
 
-#### 2.2.3 Token SDK/Chaincode
-* Cung cấp hàm logic chuẩn để mint, transfer, burn token
-* Được gọi trực tiếp bởi Token Service
-* Được đóng gói dưới dạng chaincode để triển khai lên Hyperledger Fabric
-* Không phải là một service độc lập
-* Cung cấp các hàm cơ bản cho token (mint, transfer, burn)
-* Quản lý trạng thái token trên blockchain
-* Xác thực giao dịch token
-* Tích hợp với Fabric Network
 
 #### 2.2.4 AuthN Service
 * Xác thực người dùng
@@ -257,6 +248,75 @@ sequenceDiagram
 * Xác thực đa yếu tố
 * Kiểm soát truy cập
 * Audit logging
+
+#### 4.2.1 Audit Logging cho Token Actions
+
+##### 4.2.1.1 Các sự kiện cần audit
+* **Token Mint**:
+  * Thông tin người thực hiện (DID, role)
+  * Thời gian mint
+  * Số lượng token
+  * Asset ID liên quan
+  * Lý do mint
+  * Trạng thái giao dịch
+  * Transaction hash
+
+* **Token Transfer**:
+  * Thông tin người gửi (DID, role)
+  * Thông tin người nhận (DID, role)
+  * Thời gian transfer
+  * Số lượng token
+  * Token ID
+  * Lý do transfer
+  * Trạng thái giao dịch
+  * Transaction hash
+
+##### 4.2.1.2 Cấu trúc Audit Log
+```protobuf
+message TokenAuditLog {
+    string event_id = 1;
+    string event_type = 2;  // MINT, TRANSFER, BURN
+    string actor_did = 3;
+    string actor_role = 4;
+    string target_did = 5;  // For transfer
+    int64 timestamp = 6;
+    string token_id = 7;
+    double amount = 8;
+    string asset_id = 9;
+    string reason = 10;
+    string status = 11;
+    string transaction_hash = 12;
+    map<string, string> metadata = 13;
+}
+```
+
+##### 4.2.1.3 Yêu cầu lưu trữ
+* Lưu trữ immutable trên blockchain
+* Backup định kỳ
+* Retention policy: 7 năm
+* Index cho tìm kiếm nhanh
+* Mã hóa dữ liệu nhạy cảm
+
+##### 4.2.1.4 Quy trình xử lý
+```mermaid
+sequenceDiagram
+    participant Service
+    participant Audit
+    participant Blockchain
+    participant Storage
+    
+    Service->>Audit: Log Event
+    Audit->>Audit: Validate & Format
+    Audit->>Blockchain: Store Hash
+    Audit->>Storage: Store Full Log
+    Audit-->>Service: Confirmation
+```
+
+##### 4.2.1.5 Monitoring và Alerting
+* Alert khi có sự kiện bất thường
+* Báo cáo định kỳ
+* Phát hiện pattern bất thường
+* Theo dõi volume giao dịch
 
 ### 4.3 Khả năng mở rộng
 * Horizontal scaling
@@ -650,6 +710,179 @@ sequenceDiagram
 * Backup và restore
 * Scaling và load balancing
 * Security patching
+
+#### 8.2.1 Monitoring với Prometheus + Grafana
+
+##### 8.2.1.1 Metrics cần theo dõi
+
+* **Service Metrics**:
+  * Request rate (RPS)
+  * Response time (p50, p90, p99)
+  * Error rate
+  * Service uptime
+  * Resource usage (CPU, Memory, Disk)
+
+* **Token Metrics**:
+  * Token mint rate
+  * Token transfer volume
+  * Token burn rate
+  * Active token holders
+  * Token transaction latency
+
+* **Blockchain Metrics**:
+  * Transaction throughput
+  * Block confirmation time
+  * Network latency
+  * Peer status
+  * Chaincode performance
+
+* **Business Metrics**:
+  * Daily active users
+  * Transaction volume
+  * Asset tokenization rate
+  * User growth rate
+  * Error distribution
+
+##### 8.2.1.2 Prometheus Configuration
+
+```yaml
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'asset-service'
+    static_configs:
+      - targets: ['asset-service:8080']
+    metrics_path: '/metrics'
+    
+  - job_name: 'token-service'
+    static_configs:
+      - targets: ['token-service:8080']
+    metrics_path: '/metrics'
+    
+  - job_name: 'fabric-network'
+    static_configs:
+      - targets: ['fabric-peer:8080']
+    metrics_path: '/metrics'
+```
+
+##### 8.2.1.3 Grafana Dashboards
+
+* **Service Overview**:
+  * System health
+  * Resource utilization
+  * Error rates
+  * Response times
+
+* **Token Operations**:
+  * Mint/Transfer/Burn rates
+  * Transaction volume
+  * Token holder statistics
+  * Transaction latency
+
+* **Blockchain Health**:
+  * Network status
+  * Peer health
+  * Transaction throughput
+  * Block metrics
+
+* **Business Analytics**:
+  * User activity
+  * Transaction trends
+  * Asset tokenization
+  * Error analysis
+
+##### 8.2.1.4 Alerting Rules
+
+```yaml
+groups:
+  - name: service_alerts
+    rules:
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: High error rate detected
+          
+      - alert: HighLatency
+        expr: http_request_duration_seconds{quantile="0.9"} > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: High latency detected
+          
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: Service is down
+```
+
+##### 8.2.1.5 Monitoring Architecture
+
+```mermaid
+graph TD
+    subgraph "Application Layer"
+        Asset[Asset Service]
+        Token[Token Service]
+        Fabric[Fabric Network]
+    end
+    
+    subgraph "Monitoring Layer"
+        Prometheus[Prometheus]
+        Grafana[Grafana]
+        AlertManager[Alert Manager]
+    end
+    
+    subgraph "Notification Layer"
+        Slack[Slack]
+        Email[Email]
+        PagerDuty[PagerDuty]
+    end
+    
+    Asset -->|Metrics| Prometheus
+    Token -->|Metrics| Prometheus
+    Fabric -->|Metrics| Prometheus
+    
+    Prometheus -->|Query| Grafana
+    Prometheus -->|Alerts| AlertManager
+    
+    AlertManager -->|Notifications| Slack
+    AlertManager -->|Notifications| Email
+    AlertManager -->|Incidents| PagerDuty
+```
+
+##### 8.2.1.6 Lưu ý triển khai
+
+* **Metrics Collection**:
+  * Sử dụng client libraries cho Prometheus
+  * Implement custom metrics cho business logic
+  * Tối ưu sampling rate
+  * Cấu hình retention policy
+
+* **Dashboard Design**:
+  * Tạo dashboards theo role
+  * Tối ưu query performance
+  * Implement drill-down views
+  * Tự động refresh
+
+* **Alert Management**:
+  * Phân loại alert theo severity
+  * Cấu hình notification channels
+  * Implement alert grouping
+  * Tự động resolve
+
+* **Performance**:
+  * Scale Prometheus theo data volume
+  * Tối ưu query patterns
+  * Implement data retention
+  * Monitor monitoring system
 
 ### 8.3 Kế hoạch triển khai
 * Phase 1: Core services
