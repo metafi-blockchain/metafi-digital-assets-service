@@ -162,27 +162,28 @@ sequenceDiagram
     participant AuthZ
     participant DID
     participant Asset
+    participant Token
     participant Fabric
-    
+
     User->>AuthN: Đăng nhập
     AuthN-->>User: JWT Token
-    
+
     User->>Asset: Yêu cầu token hóa
     Asset->>AuthN: Validate JWT
     AuthN-->>Asset: Valid
-    
+
     Asset->>AuthZ: Check Permission
     AuthZ-->>Asset: Permission Granted
-    
-    Asset->>DID: Get DID Info
+
+    Asset->>DID: Lấy thông tin DID & MSP
     DID-->>Asset: DID & MSP Identity
-    
-    Asset->>Asset: Create Token
-    Asset->>Fabric: Submit Transaction
-    Fabric->>Fabric: Validate & Commit
-    Fabric-->>Asset: Token Created
-    
-    Asset-->>User: Asset Tokenized
+
+    Asset->>Token: Gửi yêu cầu tạo token (Mint)
+    Token->>Fabric: Gửi giao dịch mint token
+    Fabric-->>Token: Token đã được tạo
+
+    Token-->>Asset: Thông báo thành công
+    Asset-->>User: Tài sản đã được token hóa
 ```
 
 ### 2.4 Luồng giao dịch
@@ -383,41 +384,140 @@ message CheckAssetOwnershipResponse {
 }
 ```
 
-### 5.3 Asset ↔ DID Interface
+### 5.3 Asset ↔ Token Interface
 
 ```protobuf
 service AssetService {
-    // Tạo tài sản mới
+    // Existing Operations
     rpc CreateAsset(CreateAssetRequest) returns (CreateAssetResponse);
-    
-    // Cập nhật thông tin tài sản
     rpc UpdateAsset(UpdateAssetRequest) returns (UpdateAssetResponse);
-    
-    // Lấy thông tin tài sản
     rpc GetAsset(GetAssetRequest) returns (GetAssetResponse);
-    
-    // Xác thực quyền sở hữu
     rpc VerifyOwnership(VerifyOwnershipRequest) returns (VerifyOwnershipResponse);
+    
+    // Token Integration Operations
+    rpc RequestTokenization(RequestTokenizationRequest) returns (RequestTokenizationRequest);
+    rpc GetTokenizationStatus(GetTokenizationStatusRequest) returns (GetTokenizationStatusResponse);
+    rpc UpdateTokenState(UpdateTokenStateRequest) returns (UpdateTokenStateResponse);
+    rpc GetTokenInfo(GetTokenInfoRequest) returns (GetTokenInfoResponse);
+    
+    // Compliance Operations
+    rpc ValidateCompliance(ValidateComplianceRequest) returns (ValidateComplianceResponse);
+    rpc UpdateComplianceStatus(UpdateComplianceStatusRequest) returns (UpdateComplianceStatusResponse);
 }
 
-message CreateAssetRequest {
-    string owner_did = 1;
-    AssetType asset_type = 2;
-    string metadata_uri = 3;
-    map<string, string> properties = 4;
+// Token Integration Messages
+message RequestTokenizationRequest {
+    string asset_id = 1;
+    string owner_did = 2;
+    TokenType token_type = 3;
+    double initial_supply = 4;
+    map<string, string> metadata = 5;
 }
 
-message CreateAssetResponse {
+message RequestTokenizationResponse {
+    string tokenization_id = 1;
+    string status = 2;
+    string message = 3;
+    int64 expires_at = 4;
+}
+
+message GetTokenizationStatusRequest {
+    string tokenization_id = 1;
+    string asset_id = 2;
+}
+
+message GetTokenizationStatusResponse {
+    string status = 1;
+    string token_id = 2;
+    string message = 3;
+    map<string, string> details = 4;
+}
+
+message UpdateTokenStateRequest {
     string asset_id = 1;
     string token_id = 2;
-    string status = 3;
+    AssetState new_state = 3;
+    string reason = 4;
+    map<string, string> metadata = 5;
 }
 
-enum AssetType {
-    REAL_ESTATE = 0;
-    CERTIFICATE_OF_DEPOSIT = 1;
-    INVESTMENT_FUND = 2;
-    STABLECOIN = 3;
+message UpdateTokenStateResponse {
+    string status = 1;
+    string message = 2;
+    string transaction_hash = 3;
+}
+
+message GetTokenInfoRequest {
+    string asset_id = 1;
+    string token_id = 2;
+}
+
+message GetTokenInfoResponse {
+    string token_id = 1;
+    string token_address = 2;
+    TokenType token_type = 3;
+    double total_supply = 4;
+    string owner_did = 5;
+    AssetState state = 6;
+    map<string, string> metadata = 7;
+}
+
+// Compliance Messages
+message ValidateComplianceRequest {
+    string asset_id = 1;
+    string token_id = 2;
+    ComplianceType compliance_type = 3;
+    map<string, string> parameters = 4;
+}
+
+message ValidateComplianceResponse {
+    bool valid = 1;
+    repeated string violations = 2;
+    string message = 3;
+    map<string, string> details = 4;
+}
+
+message UpdateComplianceStatusRequest {
+    string asset_id = 1;
+    string token_id = 2;
+    ComplianceStatus status = 3;
+    string report_id = 4;
+    map<string, string> details = 5;
+}
+
+message UpdateComplianceStatusResponse {
+    string status = 1;
+    string message = 2;
+    int64 updated_at = 3;
+}
+
+// Enums
+enum TokenType {
+    ERC20 = 0;
+    ERC721 = 1;
+    ERC1155 = 2;
+}
+
+enum AssetState {
+    ACTIVE = 0;
+    FROZEN = 1;
+    SUSPENDED = 2;
+    REVOKED = 3;
+    COMPLIANCE_HOLD = 4;
+}
+
+enum ComplianceType {
+    KYC = 0;
+    AML = 1;
+    SANCTIONS = 2;
+    REGULATORY = 3;
+}
+
+enum ComplianceStatus {
+    COMPLIANT = 0;
+    NON_COMPLIANT = 1;
+    PENDING_REVIEW = 2;
+    EXEMPTED = 3;
 }
 ```
 
