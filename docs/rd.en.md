@@ -1,384 +1,572 @@
-# Functional Requirements - Digital Asset Management System
+# Functional Requirements Document - Digital Asset Management System
 
-## 1. Functional Requirements
+## Table of Contents
+1. [Overview](#1-overview)
+2. [System Architecture](#2-system-architecture)
+3. [Functional Requirements](#3-functional-requirements)
+4. [Non-Functional Requirements](#4-non-functional-requirements)
+5. [Service Interfaces](#5-service-interfaces)
+6. [User Roles and Permissions](#6-user-roles-and-permissions)
+7. [Business Processes](#7-business-processes)
+8. [Deployment and Operations](#8-deployment-and-operations)
 
-### 1.1 Digital Assets Tokenization
+## 1. Overview
 
-* Support tokenization of physical and financial assets:
+### 1.1 Objectives
+Build a digital asset management system integrated with Hyperledger Fabric blockchain, supporting the tokenization of traditional assets such as real estate, certificates of deposit, and investment funds.
 
-  * Real Estate
-  * Certificates of Deposit (CDs)
-  * Investment Fund Certificates (IFCs)
-  * Stablecoins (backed by fiat, commodities, or crypto)
-* Each token represents full or partial ownership of the asset.
-* Tokenization process includes:
+### 1.2 Scope
+* Tokenization of physical and financial assets
+* Ownership and transaction management
+* Integration with authentication and authorization systems
+* Regulatory compliance support
 
-  * Asset identification and valuation
-  * Asset custody (if required)
-  * Token structure design (fungible / NFT / fractional NFT)
-  * Token issuance (mint) through smart contracts
-  * Ownership recording on blockchain
-  * Token trading and transfer through on-chain mechanisms
-* Integration of metadata (IPFS or external storage) attached to tokens
-* Support for whitelist/blacklist to ensure only KYC-verified users can interact with specific legal tokens like IFCs and Real Estate
-
-### 1.2 Authentication & Authorization
-
-* **AuthN Service**:
-  * User authentication and session management
-  * JWT token issuance and validation
-  * Multi-factor authentication support
-  * Session tracking and management
-  * Secure token storage and refresh mechanism
-
-* **AuthZ Service**:
-  * Role-based access control (RBAC)
-  * Permission management for token operations
-  * Resource-level access control
-  * Policy enforcement for token transfers
-  * Integration with business rules
-
-### 1.3 Ownership Management
-
-* Track token ownership on blockchain.
-* Support fractional ownership model.
-* Verify ownership before transfer.
-* Validate user identity through AuthN Service
-* Check transfer permissions through AuthZ Service
-
-### 1.4 Trading & Asset Transfer
-
-* Support buying, selling, and transferring tokens through smart contracts.
-* Implement atomic delivery vs payment (DvP) mechanism.
-* Allow P2P token trading or marketplace trading.
-* Validate user sessions through AuthN Service
-* Enforce trading permissions through AuthZ Service
-
-### 1.5 Dividend Distribution
-
-* Smart contract automatic distribution of:
-
-  * Deposit interest
-  * Fund dividends
-  * Real estate rental income
-* Periodic execution (monthly or quarterly).
-* Validate distribution rights through AuthZ Service
-
-### 1.6 Regulatory Compliance
-
-* KYC/AML integration for all users.
-* Only allow KYC-verified wallets to interact with the system.
-* Apply whitelist/blacklist at smart contract level.
-* Enforce compliance through AuthZ Service policies
-
-### 1.7 Smart Contract Automation
-
-* Automate business operations:
-
-  * Token creation / destruction / transfer
-  * Governance voting
-  * Periodic reinvestment (SIP)
-* Validate operations through AuthN and AuthZ Services
-
-### 1.8 Reporting & Auditing
-
-* Provide APIs for:
-
-  * Retrieving ownership and transaction history
-  * Querying NAV and investment performance
-* Track transactions on-chain or hash off-chain data for verification.
-* Enforce reporting access through AuthZ Service
+### 1.3 Target Users
+* Asset owners
+* Investors
+* System administrators
+* Partners and third parties
 
 ## 2. System Architecture
 
-### 2.1 Architecture Diagram
+### 2.1 System Overview
 
 ```mermaid
 graph TD
-    Client[Client Application] --> AuthN[AuthN Service]
-    Client --> AuthZ[AuthZ Service]
-    Client --> Token[Token Service]
-    Client --> DID[DID Service]
-    
-    AuthN --> DB1[(User DB)]
-    AuthZ --> DB2[(RBAC DB)]
-    DID --> DB3[(Identity DB)]
-    Token --> DB4[(Token DB)]
-    
-    Token --> Fabric[Fabric Network]
-    DID --> Fabric
-    
-    Token --> Storage[(IPFS/MinIO)]
-    
+    subgraph "Client Layer"
+        Web[Web App]
+        Mobile[Mobile App]
+        API[API Client]
+    end
+
+    subgraph "Service Layer"
+        AuthN[AuthN Service]
+        AuthZ[AuthZ Service]
+        DID[DID Service]
+        Token[Token Service]
+        Event[Event Service]
+    end
+
     subgraph "Blockchain Layer"
-        Fabric --> Chaincode[Token Chaincode]
-        Fabric --> MSP[MSP Identity]
+        Fabric[Fabric Network]
+        Chaincode[Token Chaincode]
+        MSP[MSP Identity]
     end
-    
+
     subgraph "Storage Layer"
-        Storage --> Metadata[Asset Metadata]
-        Storage --> Documents[Legal Documents]
+        DB[(Database)]
+        Cache[(Redis Cache)]
+        Storage[(IPFS/MinIO)]
     end
+
+    Web --> AuthN
+    Mobile --> AuthN
+    API --> AuthN
+
+    AuthN --> AuthZ
+    AuthN --> DID
+    AuthN --> Token
+
+    Token --> Fabric
+    DID --> Fabric
+    Event --> Fabric
+
+    Token --> DB
+    DID --> DB
+    Event --> Cache
+    Token --> Storage
+
+    Fabric --> Chaincode
+    Fabric --> MSP
 ```
 
-### 2.2 DID Processing Flow
+### 2.2 Core Components
+* **AuthN Service**: User authentication and session management
+* **AuthZ Service**: Access control and authorization
+* **DID Service**: Decentralized identity management
+* **Token Service**: Token and transaction management
+* **Event Service**: Real-time event processing
 
-```mermaid
-sequenceDiagram
-    participant User
-    participant Client
-    participant DID
-    participant Fabric
+## 3. Functional Requirements
+
+### 3.1 Asset Management
+* Create and manage digital assets
+* Asset tokenization
+* Metadata management
+* Status tracking
+
+### 3.2 Transaction Management
+* Token creation and transfer
+* Token burning
+* Transaction history tracking
+* Transaction confirmation
+
+### 3.3 User Management
+* Registration and authentication
+* Role management
+* KYC/AML
+* Session management
+
+### 3.4 Reporting and Monitoring
+* Transaction reporting
+* Asset reporting
+* System monitoring
+* Audit logging
+
+## 4. Non-Functional Requirements
+
+### 4.1 Performance
+* Response time < 2s
+* Support 1000+ transactions/second
+* Horizontal scalability
+* Resource optimization
+
+### 4.2 Security
+* Data encryption
+* Multi-factor authentication
+* Granular permissions
+* Audit trail
+
+### 4.3 Availability
+* 99.9% uptime
+* Automatic recovery
+* Regular backups
+* Real-time monitoring
+
+### 4.4 Compliance
+* KYC/AML
+* Transaction reporting
+* Data retention
+* Audit logging
+
+## 5. Service Interfaces
+
+### 5.1 DID ↔ AuthN Interface
+
+```protobuf
+service DIDService {
+    // Create DID for new user
+    rpc CreateDID(CreateDIDRequest) returns (CreateDIDResponse);
     
-    User->>Client: Register Account
-    Client->>DID: Create DID Request
-    DID->>DID: Create DID Document
-    DID->>Fabric: Create MSP Identity
-    Fabric-->>DID: MSP Certificate
-    DID->>DID: Store DID & Certificate
-    DID-->>Client: DID & Certificate
-    Client-->>User: Registration Confirmation
+    // Get user's DID information
+    rpc GetDID(GetDIDRequest) returns (GetDIDResponse);
     
-    Note over User,Fabric: KYC Process
-    User->>Client: Submit KYC
-    Client->>DID: Verify KYC Request
-    DID->>DID: Validate KYC
-    DID->>Fabric: Update MSP
-    DID-->>Client: KYC Status
-    Client-->>User: KYC Result
+    // Update KYC status
+    rpc UpdateKYCStatus(UpdateKYCRequest) returns (UpdateKYCResponse);
+    
+    // Get MSP Identity for transactions
+    rpc GetMSPIdentity(GetMSPRequest) returns (GetMSPResponse);
+}
+
+message CreateDIDRequest {
+    string user_id = 1;
+    string email = 2;
+    string phone = 3;
+}
+
+message CreateDIDResponse {
+    string did = 1;
+    string msp_id = 2;
+    bytes certificate = 3;
+}
+
+message GetDIDRequest {
+    string user_id = 1;
+}
+
+message GetDIDResponse {
+    string did = 1;
+    string msp_id = 2;
+    KYCStatus kyc_status = 3;
+    bytes certificate = 4;
+}
+
+enum KYCStatus {
+    UNVERIFIED = 0;
+    PENDING = 1;
+    VERIFIED = 2;
+    REJECTED = 3;
+}
 ```
 
-### 2.3 Token Transaction Flow
+### 5.2 DID ↔ Asset Interface
 
-```mermaid
-sequenceDiagram
-    participant User
-    participant Client
-    participant AuthN
-    participant AuthZ
-    participant Token
-    participant DID
-    participant Fabric
+```protobuf
+service AssetService {
+    // Create new asset
+    rpc CreateAsset(CreateAssetRequest) returns (CreateAssetResponse);
     
-    User->>Client: Transaction Request
-    Client->>AuthN: Validate JWT
-    AuthN-->>Client: JWT Valid
+    // Update asset information
+    rpc UpdateAsset(UpdateAssetRequest) returns (UpdateAssetResponse);
     
-    Client->>AuthZ: Check Permission
-    AuthZ-->>Client: Permission Granted
+    // Get asset information
+    rpc GetAsset(GetAssetRequest) returns (GetAssetResponse);
     
-    Client->>DID: Get MSP Identity
-    DID-->>Client: MSP Certificate
-    
-    Client->>Token: Submit Transaction
-    Token->>Fabric: Submit Transaction
-    Fabric->>Fabric: Validate & Commit
-    Fabric-->>Token: Transaction Result
-    
-    Token->>Token: Update State
-    Token-->>Client: Transaction Status
-    Client-->>User: Transaction Result
+    // Verify ownership
+    rpc VerifyOwnership(VerifyOwnershipRequest) returns (VerifyOwnershipResponse);
+}
+
+message CreateAssetRequest {
+    string owner_did = 1;
+    AssetType asset_type = 2;
+    string metadata_uri = 3;
+    map<string, string> properties = 4;
+}
+
+message CreateAssetResponse {
+    string asset_id = 1;
+    string token_id = 2;
+    string status = 3;
+}
+
+enum AssetType {
+    REAL_ESTATE = 0;
+    CERTIFICATE_OF_DEPOSIT = 1;
+    INVESTMENT_FUND = 2;
+    STABLECOIN = 3;
+}
 ```
 
-### 2.4 Service Components
+### 5.3 Asset ↔ Token Interface
 
-* **AuthN Service**: Provides user authentication and issues JWT tokens for sessions
-* **AuthZ Service**: Manages access control based on user roles (RBAC)
-* **DID Service**: Provides DID (Decentralized Identifiers) and maps users to system identities (MSP, cert)
-* **Token Service**: Implements token logic (mint, transfer, burn, view) through Fabric Token SDK
-* **Client App**: Frontend interface for user interaction
-* **Fabric Network**: Records tokenized asset transactions on private blockchain network
-
-## 2. Non-Functional Requirements
-
-### 2.1 Security
-
-* Authentication through AuthN Service with JWT tokens
-* Authorization through AuthZ Service with RBAC
-* Sign all transactions with Hyperledger Fabric MSP identity.
-* Prevent attacks such as:
-
-  * Reentrancy
-  * Oracle Manipulation
-  * Replay attack
-  * JWT token theft
-  * Session hijacking
-
-### 2.2 Scalability
-
-* Support multiple asset types simultaneously.
-* Microservice-oriented design for easy scaling.
-* Prepare for multi-chain deployment capability.
-* Scale AuthN and AuthZ services independently
-
-### 2.3 Integration Capability
-
-* Integration with:
-
-  * AuthN Service for user authentication and session management
-  * AuthZ Service for access control and permission management
-  * DID Service for user identification
-  * Hyperledger Fabric Token SDK (via Gateway)
-  * Chainlink oracle for NAV and price updates
-  * IPFS or MinIO for metadata storage
-
-### 2.4 Compliance & Monitoring
-
-* Log sensitive behaviors and alert anomalies.
-* Support periodic reporting in regulatory format.
-* Allow audit trail retrieval on demand.
-* Monitor AuthN and AuthZ service performance
-
-### 2.5 Availability & Reliability
-
-* 24/7 system operation with failover mechanism.
-* Support horizontal scaling.
-* Regular backups and token state snapshots.
-* High availability for AuthN and AuthZ services
-
-## 3. Implementation Scope by Phase (MVP)
-
-| Feature                    | Priority   |
-| -------------------------- | ---------- |
-| Token Create/Transfer/Burn | High       |
-| Digital Asset Tokenization | High       |
-| Token Ownership Management | High       |
-| AuthN & AuthZ Integration  | High       |
-| DID Integration            | High       |
-| Dividend Distribution      | Medium     |
-| Periodic Trading (SIP)     | Low        |
-| NAV Updates via Oracle     | Low        |
-| Cross-chain Support        | Low        |
-
-*Last Updated: 31/05/2025*
-
-## 4. Integration with Existing AuthN/AuthZ Systems
-
-### 4.1 AuthN Service Integration
-
-```mermaid
-sequenceDiagram
-    participant Client
-    participant AuthN
-    participant Legacy[Legacy Auth System]
-    participant DB[(User DB)]
+```protobuf
+service TokenService {
+    // Create token for asset
+    rpc MintToken(MintTokenRequest) returns (MintTokenResponse);
     
-    Client->>AuthN: Login Request
-    AuthN->>Legacy: Validate Credentials
-    Legacy->>DB: Check User Data
-    DB-->>Legacy: User Info
-    Legacy-->>AuthN: Auth Result
-    AuthN->>AuthN: Generate JWT
-    AuthN-->>Client: JWT Token
+    // Transfer token
+    rpc TransferToken(TransferTokenRequest) returns (TransferTokenResponse);
     
-    Note over Client,DB: Token Refresh Flow
-    Client->>AuthN: Refresh Token
-    AuthN->>Legacy: Validate Refresh Token
-    Legacy-->>AuthN: Token Valid
-    AuthN->>AuthN: Generate New JWT
-    AuthN-->>Client: New JWT Token
+    // Burn token
+    rpc BurnToken(BurnTokenRequest) returns (BurnTokenResponse);
+    
+    // Get token information
+    rpc GetToken(GetTokenRequest) returns (GetTokenResponse);
+}
+
+message MintTokenRequest {
+    string asset_id = 1;
+    string owner_did = 2;
+    uint64 amount = 3;
+    string metadata_uri = 4;
+}
+
+message MintTokenResponse {
+    string token_id = 1;
+    string transaction_id = 2;
+    string status = 3;
+}
+
+message TransferTokenRequest {
+    string token_id = 1;
+    string from_did = 2;
+    string to_did = 3;
+    uint64 amount = 4;
+}
+
+message TransferTokenResponse {
+    string transaction_id = 1;
+    string status = 2;
+}
 ```
 
-```mermaid
-sequenceDiagram
-    participant Client
-    participant AuthN
-    participant JWK[JWK Service]
+### 5.4 Other Interfaces
+
+#### 5.4.1 AuthN ↔ AuthZ Interface
+
+```protobuf
+service AuthZService {
+    // Check access permission
+    rpc CheckPermission(CheckPermissionRequest) returns (CheckPermissionResponse);
     
-    Client->>AuthN: Request JWK
-    AuthN->>JWK: Get Public Keys
-    JWK-->>AuthN: JWK Set
-    AuthN-->>Client: JWK Set
-    
-    Note over Client,JWK: JWT Validation Flow
-    Client->>Client: Validate JWT
-    Client->>AuthN: Verify Token
-    AuthN->>JWK: Get Key by Kid
-    JWK-->>AuthN: Public Key
-    AuthN->>AuthN: Verify Signature
-    AuthN-->>Client: Validation Result
+    // Get user's permissions
+    rpc GetUserPermissions(GetUserPermissionsRequest) returns (GetUserPermissionsResponse);
+}
+
+message CheckPermissionRequest {
+    string user_id = 1;
+    string resource = 2;
+    string action = 3;
+}
+
+message CheckPermissionResponse {
+    bool allowed = 1;
+    string reason = 2;
+}
 ```
 
-* **Authentication Integration**:
-  * Use existing API Gateway for authentication
-  * Convert session tokens to JWT
-  * Support SSO with existing system
-  * Maintain backward compatibility
+#### 5.4.2 Token ↔ Event Interface
 
-* **Session Management**:
-  * Synchronize sessions between old and new systems
-  * Support token refresh
-  * Handle synchronized logout
-  * Track session state
-
-* **JWT Management**:
-  * Expose JWK endpoint via gRPC
-  * Provide public keys for JWT validation
-  * Support key rotation
-  * Cache JWK responses
-  * Implement token validation service
-
-* **Security Features**:
-  * RSA/ECDSA key pairs for JWT signing
-  * Key rotation policies
-  * Token revocation support
-  * Rate limiting for JWK requests
-  * Secure key storage
-
-### 4.2 AuthZ Service Integration
-
-```mermaid
-sequenceDiagram
-    participant Client
-    participant AuthZ
-    participant Legacy[Legacy RBAC]
-    participant DB[(RBAC DB)]
+```protobuf
+service EventService {
+    // Subscribe to events
+    rpc Subscribe(SubscribeRequest) returns (stream Event);
     
-    Client->>AuthZ: Check Permission
-    AuthZ->>Legacy: Get User Roles
-    Legacy->>DB: Query Permissions
-    DB-->>Legacy: Role Data
-    Legacy-->>AuthZ: Permission Result
-    AuthZ->>AuthZ: Apply Policies
-    AuthZ-->>Client: Access Decision
+    // Publish event
+    rpc Publish(PublishRequest) returns (PublishResponse);
+}
+
+message Event {
+    string event_type = 1;
+    string token_id = 2;
+    string transaction_id = 3;
+    string status = 4;
+    int64 timestamp = 5;
+    map<string, string> metadata = 6;
+}
 ```
 
-* **Authorization Integration**:
-  * Map roles from legacy to new RBAC
-  * Convert permissions format
-  * Support policy inheritance
-  * Maintain audit trail
+### 5.5 Implementation Notes
 
-* **Permission Management**:
-  * Synchronize role changes
-  * Validate permissions
-  * Cache permission data
-  * Log access decisions
+* **gRPC Communication**:
+  * Use gRPC for all internal service communication
+  * Implement retry mechanism
+  * Use circuit breaker pattern
+  * Implement request timeouts
 
-### 4.3 Technical Requirements
-
-* **API Integration**:
-  * REST API endpoints for AuthN/AuthZ
-  * gRPC services for internal calls
-  * WebSocket for real-time updates
-  * Rate limiting and circuit breaking
-
-* **Data Migration**:
-  * Migrate user data
-  * Convert role mappings
-  * Preserve audit logs
-  * Validate data integrity
+* **Error Handling**:
+  * Define clear error codes
+  * Implement proper error propagation
+  * Log detailed error information
+  * Implement retry mechanism
 
 * **Security**:
-  * Encrypt sensitive data
-  * Secure API communication
-  * Monitor integration points
-  * Regular security audits
+  * Encrypt all internal communication
+  * Implement service-to-service authentication
+  * Validate input data
+  * Rate limit all endpoints
 
 * **Monitoring**:
-  * Track integration metrics
-  * Alert on failures
-  * Monitor performance
-  * Log integration events
+  * Track service call latency
+  * Monitor error rates
+  * Set up alerts
+  * Log debugging information
+
+## 6. User Roles and Permissions
+
+### 6.1 Role Definitions
+
+```protobuf
+enum UserRole {
+    // System administration roles
+    SYSTEM_ADMIN = 0;      // System administrator
+    COMPLIANCE_OFFICER = 1; // Compliance officer
+    AUDITOR = 2;           // Auditor
+    
+    // Asset management roles
+    ASSET_OWNER = 10;      // Asset owner
+    ASSET_MANAGER = 11;    // Asset manager
+    ASSET_OPERATOR = 12;   // Asset operator
+    
+    // Investment roles
+    INVESTOR = 20;         // Investor
+    INSTITUTIONAL_INVESTOR = 21; // Institutional investor
+    RETAIL_INVESTOR = 22;  // Retail investor
+    
+    // Partner roles
+    BROKER = 30;           // Broker
+    CUSTODIAN = 31;        // Custodian
+    LEGAL_ADVISOR = 32;    // Legal advisor
+}
+```
+
+### 6.2 Role Permissions
+
+#### 6.2.1 System Administration
+* **SYSTEM_ADMIN**:
+  * Full system management
+  * System configuration
+  * User and role management
+  * Access to all logs and metrics
+  * Highest system privileges
+
+* **COMPLIANCE_OFFICER**:
+  * KYC review and approval
+  * Transaction monitoring
+  * Compliance reporting
+  * Risk assessment
+  * No system configuration access
+
+* **AUDITOR**:
+  * Full transaction history access
+  * System log access
+  * Audit report generation
+  * No modification rights
+
+#### 6.2.2 Asset Management
+* **ASSET_OWNER**:
+  * Asset creation and management
+  * Token issuance
+  * Distribution policy decisions
+  * Asset reporting
+  * No system configuration access
+
+* **ASSET_MANAGER**:
+  * Asset operation management
+  * Transaction execution
+  * Management reporting
+  * No token issuance rights
+
+* **ASSET_OPERATOR**:
+  * Operational activities
+  * Asset status updates
+  * No financial management rights
+
+#### 6.2.3 Investors
+* **INVESTOR** (Base role):
+  * Asset information access
+  * Transaction execution
+  * Investment reporting
+  * No asset creation rights
+
+* **INSTITUTIONAL_INVESTOR**:
+  * All INVESTOR rights
+  * Large volume trading
+  * Dedicated API access
+  * Enhanced KYC requirements
+
+* **RETAIL_INVESTOR**:
+  * Limited trading
+  * Basic information access
+  * Basic KYC requirements
+
+#### 6.2.4 Partners
+* **BROKER**:
+  * Order creation and management
+  * Market information access
+  * No direct trading rights
+
+* **CUSTODIAN**:
+  * Physical asset management
+  * Ownership verification
+  * No trading rights
+
+* **LEGAL_ADVISOR**:
+  * Legal document access
+  * Legal report generation
+  * No modification rights
+
+### 6.3 Role Assignment Process
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant AuthN
+    participant AuthZ
+    participant DID
+    participant Compliance
+    
+    User->>AuthN: Register account
+    AuthN->>DID: Create DID
+    DID-->>AuthN: DID Created
+    
+    User->>Compliance: Submit KYC
+    Compliance->>Compliance: Verify KYC
+    Compliance->>AuthZ: Update role
+    
+    AuthZ->>AuthZ: Apply policy
+    AuthZ-->>User: Role & Permissions
+```
+
+### 6.4 Policy Management
+
+```protobuf
+message RolePolicy {
+    string role = 1;
+    repeated string permissions = 2;
+    map<string, string> constraints = 3;
+    int64 max_transaction_amount = 4;
+    repeated string allowed_asset_types = 5;
+}
+
+message UserPolicy {
+    string user_id = 1;
+    string role = 2;
+    KYCStatus kyc_status = 3;
+    repeated string additional_permissions = 4;
+    map<string, string> custom_constraints = 5;
+}
+```
+
+### 6.5 Implementation Notes
+
+* **Role Hierarchy**:
+  * Implement role inheritance
+  * Support custom roles
+  * Allow permission overrides
+  * Audit log all changes
+
+* **KYC Integration**:
+  * KYC level affects permissions
+  * Automatic role updates after KYC
+  * Support enhanced KYC
+  * Store KYC history
+
+* **Compliance**:
+  * Role-based compliance checks
+  * Role-based transaction limits
+  * Violation reporting
+  * Anomaly alerts
+
+* **Monitoring**:
+  * Track role changes
+  * Monitor permission usage
+  * Alert on policy violations
+  * Regular compliance reports
+
+## 7. Business Processes
+
+### 7.1 Asset Tokenization Process
+```mermaid
+sequenceDiagram
+    participant Owner
+    participant System
+    participant Compliance
+    participant Blockchain
+    
+    Owner->>System: Tokenization request
+    System->>Compliance: Compliance check
+    Compliance-->>System: Approval
+    System->>Blockchain: Create token
+    Blockchain-->>System: Confirmation
+    System-->>Owner: Completion notification
+```
+
+### 7.2 Trading Process
+```mermaid
+sequenceDiagram
+    participant Buyer
+    participant Seller
+    participant System
+    participant Blockchain
+    
+    Buyer->>System: Place buy order
+    Seller->>System: Place sell order
+    System->>System: Match orders
+    System->>Blockchain: Execute transaction
+    Blockchain-->>System: Confirmation
+    System-->>Buyer: Update balance
+    System-->>Seller: Update balance
+```
+
+## 8. Deployment and Operations
+
+### 8.1 Deployment Requirements
+* Kubernetes cluster
+* Hyperledger Fabric network
+* Database cluster
+* Monitoring system
+
+### 8.2 Operational Procedures
+* Monitoring and alerting
+* Backup and restore
+* Scaling and load balancing
+* Security patching
+
+### 8.3 Deployment Plan
+* Phase 1: Core services
+* Phase 2: Token management
+* Phase 3: Trading features
+* Phase 4: Advanced features
 
 *Last Updated: 31/05/2025* 

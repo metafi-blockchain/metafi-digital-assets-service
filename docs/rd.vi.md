@@ -1,12 +1,33 @@
-# Yêu Cầu Chức Năng - Hệ Thống Quản Lý Tài Sản Số
+# Tài Liệu Yêu Cầu Chức Năng - Hệ Thống Quản Lý Tài Sản Số
 
-## 1. Mục tiêu hệ thống
+## Mục lục
+1. [Tổng quan](#1-tổng-quan)
+2. [Kiến trúc hệ thống](#2-kiến-trúc-hệ-thống)
+3. [Yêu cầu chức năng](#3-yêu-cầu-chức-năng)
+4. [Yêu cầu phi chức năng](#4-yêu-cầu-phi-chức-năng)
+5. [Interface giữa các Service](#5-interface-giữa-các-service)
+6. [Vai trò người dùng và Phân quyền](#6-vai-trò-người-dùng-và-phân-quyền)
+7. [Quy trình nghiệp vụ](#7-quy-trình-nghiệp-vụ)
+8. [Triển khai và Vận hành](#8-triển-khai-và-vận-hành)
 
-Xây dựng một hệ thống quản lý tài sản số tích hợp với blockchain Hyperledger Fabric, hỗ trợ việc token hóa tài sản truyền thống như bất động sản, chứng chỉ tiền gửi, và quỹ đầu tư. Hệ thống cần đảm bảo xác thực người dùng qua AuthN Service, phân quyền truy cập qua AuthZ Service, và hỗ trợ giao dịch token thông qua Fabric Token SDK.
+## 1. Tổng quan
 
----
+### 1.1 Mục tiêu
+Xây dựng một hệ thống quản lý tài sản số tích hợp với blockchain Hyperledger Fabric, hỗ trợ việc token hóa tài sản truyền thống như bất động sản, chứng chỉ tiền gửi, và quỹ đầu tư.
 
-## 2. Kiến trúc hệ thống tổng thể
+### 1.2 Phạm vi
+* Token hóa tài sản vật lý và tài chính
+* Quản lý quyền sở hữu và giao dịch
+* Tích hợp với hệ thống xác thực và phân quyền
+* Hỗ trợ tuân thủ quy định
+
+### 1.3 Đối tượng người dùng
+* Chủ sở hữu tài sản
+* Nhà đầu tư
+* Quản trị viên hệ thống
+* Đối tác và bên thứ ba
+
+## 2. Kiến trúc hệ thống
 
 ### 2.1 Sơ đồ hệ thống tổng quan
 
@@ -59,384 +80,68 @@ graph TD
     Fabric --> MSP
 ```
 
-### 2.2 Luồng xử lý DID
-
-```mermaid
-sequenceDiagram
-    participant User
-    participant Client
-    participant AuthN
-    participant DID
-    participant Fabric
-    
-    User->>Client: Đăng ký tài khoản
-    Client->>AuthN: Xác thực thông tin
-    AuthN->>DID: Tạo DID Request
-    DID->>DID: Tạo DID Document
-    DID->>Fabric: Tạo MSP Identity
-    Fabric-->>DID: MSP Certificate
-    DID->>DID: Lưu DID & Certificate
-    DID-->>AuthN: DID & Certificate
-    AuthN-->>Client: JWT Token
-    Client-->>User: Xác nhận đăng ký
-    
-    Note over User,Fabric: Quy trình KYC
-    User->>Client: Nộp KYC
-    Client->>AuthN: Verify KYC Request
-    AuthN->>DID: Update KYC Status
-    DID->>Fabric: Update MSP
-    DID-->>AuthN: KYC Status
-    AuthN-->>Client: KYC Result
-    Client-->>User: KYC Result
-```
-
-### 2.3 Luồng giao dịch token
-
-```mermaid
-sequenceDiagram
-    participant User
-    participant Client
-    participant AuthN
-    participant AuthZ
-    participant Token
-    participant DID
-    participant Fabric
-    
-    User->>Client: Yêu cầu giao dịch
-    Client->>AuthN: Validate JWT
-    AuthN-->>Client: JWT Valid
-    
-    Client->>AuthZ: Check Permission
-    AuthZ-->>Client: Permission Granted
-    
-    Client->>DID: Get MSP Identity
-    DID-->>Client: MSP Certificate
-    
-    Client->>Token: Submit Transaction
-    Token->>Fabric: Submit Transaction
-    Fabric->>Fabric: Validate & Commit
-    Fabric-->>Token: Transaction Result
-    
-    Token->>Token: Update State
-    Token-->>Client: Transaction Status
-    Client-->>User: Kết quả giao dịch
-```
-
-### 2.4 Luồng tạo token
-
-```mermaid
-sequenceDiagram
-    participant User
-    participant Client
-    participant AuthN
-    participant AuthZ
-    participant Token
-    participant DID
-    participant Fabric
-    participant Storage
-    
-    User->>Client: Tạo token request
-    Client->>AuthN: Validate JWT
-    AuthN-->>Client: JWT Valid
-    
-    Client->>AuthZ: Check Mint Permission
-    AuthZ-->>Client: Permission Granted
-    
-    Client->>DID: Get MSP Identity
-    DID-->>Client: MSP Certificate
-    
-    Client->>Storage: Upload Metadata
-    Storage-->>Client: Metadata URI
-    
-    Client->>Token: Mint Token Request
-    Token->>Fabric: Submit Mint Transaction
-    Fabric->>Fabric: Validate & Commit
-    Fabric-->>Token: Mint Result
-    
-    Token->>Token: Update Token State
-    Token-->>Client: Token Created
-    Client-->>User: Token Info
-```
-
-* **AuthN Service**: Cung cấp xác thực người dùng và cấp JWT token cho các phiên làm việc.
-* **AuthZ Service**: Quản lý phân quyền truy cập dựa trên vai trò người dùng (RBAC).
-* **DID Service**: Cung cấp DID (Decentralized Identifiers) và ánh xạ người dùng đến danh tính trong hệ thống (MSP, cert).
-* **Token Service**: Thực hiện logic token (mint, transfer, burn, view) thông qua Fabric Token SDK.
-* **Event Service**: Xử lý và phát tán các sự kiện trong hệ thống.
-* **Client App**: Giao diện frontend tương tác với người dùng.
-* **Fabric Network**: Ghi nhận các giao dịch token hóa tài sản trên mạng blockchain riêng.
-
----
+### 2.2 Các thành phần chính
+* **AuthN Service**: Xác thực người dùng và quản lý phiên
+* **AuthZ Service**: Phân quyền truy cập
+* **DID Service**: Quản lý danh tính phi tập trung
+* **Token Service**: Quản lý token và giao dịch
+* **Event Service**: Xử lý sự kiện realtime
 
 ## 3. Yêu cầu chức năng
 
-### 3.1 Token hóa tài sản số
+### 3.1 Quản lý tài sản
+* Tạo và quản lý tài sản số
+* Token hóa tài sản
+* Quản lý metadata
+* Theo dõi trạng thái
 
-* Hỗ trợ token hóa các tài sản vật lý và tài chính:
-  * Bất động sản
-  * Chứng chỉ tiền gửi (CDs)
-  * Chứng chỉ quỹ đầu tư (IFCs)
-  * Stablecoin (bảo chứng bởi tiền pháp định, hàng hóa, hoặc crypto)
-* Mỗi token đại diện cho toàn bộ hoặc một phần quyền sở hữu tài sản
-* Quy trình token hóa bao gồm:
-  * Định danh và định giá tài sản
-  * Lưu ký tài sản (nếu cần)
-  * Thiết kế cấu trúc token (fungible / NFT / fractional NFT)
-  * Phát hành token (mint) thông qua smart contract
-  * Ghi nhận quyền sở hữu trên blockchain
-  * Giao dịch và chuyển nhượng token qua các cơ chế on-chain
-* Tích hợp metadata (IPFS hoặc lưu trữ ngoài) gắn kèm token
-* Hỗ trợ whitelist/blacklist để đảm bảo chỉ người dùng đã KYC mới tương tác được với loại token pháp lý đặc thù
+### 3.2 Quản lý giao dịch
+* Tạo và chuyển token
+* Hủy token
+* Theo dõi lịch sử giao dịch
+* Xác nhận giao dịch
 
-### 3.2 Tạo và phát hành Token
+### 3.3 Quản lý người dùng
+* Đăng ký và xác thực
+* Quản lý vai trò
+* KYC/AML
+* Quản lý phiên
 
-* Nhận thông tin tài sản từ người dùng/quản trị viên
-* Xác thực người dùng qua AuthN Service và lấy JWT token
-* Kiểm tra quyền mint token qua AuthZ Service
-* Gọi DID để ánh xạ MSP/certificate của chủ sở hữu
-* Gọi Fabric Token SDK để tạo token (UTXO based)
-* Lưu metadata mô tả tài sản và token tương ứng
-
-### 3.3 Chuyển nhượng & Giao dịch Token
-
-* Cho phép người dùng chuyển token sang người khác
-* Xác thực JWT token qua AuthN Service
-* Kiểm tra quyền qua AuthZ Service
-* Gọi DID → lấy cert người gửi/người nhận
-* Giao dịch sử dụng hàm `Transfer` của Token SDK
-* Hỗ trợ giao dịch P2P và tích hợp marketplace
-* Triển khai cơ chế thanh toán giao nhận nguyên tử (DvP)
-
-### 3.4 Hủy Token
-
-* Cho phép người sở hữu chủ động hủy bỏ token
-* Xác thực JWT token qua AuthN Service
-* Kiểm tra quyền qua AuthZ Service
-* Gọi DID → xác thực danh tính và cert
-* Gọi `Burn` SDK để xóa token khỏi mạng
-
-### 3.5 Truy vấn số dư và lịch sử giao dịch
-
-* Cho phép người dùng xem số dư token của mình
-* Cho phép truy vấn lịch sử giao dịch (txID, timestamp, status...)
-* Tích hợp Fabric Event hoặc chaincode để nhận sự kiện realtime
-
-### 3.6 Tự động phân phối lợi tức
-
-* Token có liên quan đến chứng chỉ tiền gửi, bất động sản cho thuê...
-* Định kỳ phân phối lợi tức qua logic hợp đồng thông minh hoặc job định kỳ
-* Lưu thông tin giao dịch lợi tức và gửi thông báo đến người sở hữu
-* Hỗ trợ tái đầu tư tự động (SIP)
-
-### 3.7 Báo cáo và tích hợp dữ liệu
-
-* Tổng hợp báo cáo sở hữu token theo thời gian, loại tài sản
-* Hỗ trợ export dữ liệu cho cơ quan quản lý (CSV, API)
-* Tích hợp DID để xác định người dùng và AuthZ để giới hạn quyền xem báo cáo
-* Theo dõi giao dịch on-chain hoặc hash dữ liệu off-chain để kiểm chứng
-
----
+### 3.4 Báo cáo và giám sát
+* Báo cáo giao dịch
+* Báo cáo tài sản
+* Giám sát hệ thống
+* Audit log
 
 ## 4. Yêu cầu phi chức năng
 
-### 4.1 Bảo mật
+### 4.1 Hiệu năng
+* Thời gian phản hồi < 2s
+* Hỗ trợ 1000+ giao dịch/giây
+* Khả năng mở rộng theo chiều ngang
+* Tối ưu hóa tài nguyên
 
-* Xác thực qua AuthN Service và JWT token
-* Giao dịch được ký bằng cert từ DID Service (MSP Identity)
-* Kiểm tra quyền chi tiết theo từng hành động qua AuthZ Service
-* Ngăn chặn các tấn công như:
-  * Reentrancy
-  * Oracle Manipulation
-  * Replay attack
-  * JWT token theft
-  * Session hijacking
+### 4.2 Bảo mật
+* Mã hóa dữ liệu
+* Xác thực đa yếu tố
+* Phân quyền chi tiết
+* Audit trail
 
-### 4.2 Khả năng mở rộng
+### 4.3 Khả dụng
+* Uptime 99.9%
+* Khôi phục tự động
+* Backup định kỳ
+* Monitoring realtime
 
-* Hỗ trợ nhiều loại tài sản và nhiều tổ chức sở hữu
-* Thiết kế dạng microservice để dễ tách module theo nghiệp vụ (mint, transfer...)
-* Chuẩn bị cho khả năng triển khai đa chuỗi (multi-chain)
+### 4.4 Tuân thủ
+* KYC/AML
+* Báo cáo giao dịch
+* Lưu trữ dữ liệu
+* Audit log
 
-### 4.3 Tính sẵn sàng và khôi phục
+## 5. Interface giữa các Service
 
-* Hỗ trợ HA (High Availability) và backup định kỳ
-* Có khả năng khôi phục token theo snapshot trạng thái cuối cùng
-* Hệ thống hoạt động 24/7 với cơ chế failover
-* Hỗ trợ nhân bản ngang (horizontal scaling)
-
-### 4.4 Khả năng tích hợp
-
-* Tích hợp với:
-  * AuthN Service để xác thực người dùng và quản lý phiên
-  * AuthZ Service để kiểm tra quyền truy cập
-  * DID Service để định danh người dùng
-  * Hyperledger Fabric Token SDK (qua Gateway)
-  * Chainlink oracle để cập nhật NAV, giá
-  * IPFS hoặc MinIO để lưu metadata
-
----
-
-## 5. Ưu tiên triển khai giai đoạn đầu (MVP)
-
-| Chức năng                         | Ưu tiên    |
-| --------------------------------- | ---------- |
-| Tạo Token tài sản (mint)          | Cao        |
-| Chuyển Token (transfer)           | Cao        |
-| Hủy Token (burn)                  | Cao        |
-| Truy vấn số dư, lịch sử giao dịch | Trung bình |
-| Tích hợp AuthN và AuthZ           | Cao        |
-| Tích hợp DID                      | Cao        |
-| SIP & tự động hóa lợi tức         | Trung bình |
-| Hệ thống báo cáo                  | Trung bình |
-| Hỗ trợ cross-chain                | Thấp       |
-
----
-
-## 6. Ghi chú triển khai kỹ thuật
-
-* Chaincode sử dụng Fabric Token SDK dạng external
-* AuthN Service và AuthZ Service được viết bằng Go
-* DID Service có thể được viết bằng Go hoặc NestJS tùy môi trường
-* Giao dịch nên thực hiện qua gRPC hoặc HTTP API Gateway
-* Cơ sở dữ liệu lưu thông tin metadata về tài sản token hóa (PostgreSQL hoặc MongoDB tùy quy mô)
-* IPFS hoặc MinIO có thể dùng để lưu trữ file chứng nhận/metadata nếu cần
-* Hỗ trợ triển khai đa chuỗi trong tương lai
-* Tích hợp Chainlink để cập nhật giá và NAV
-
-*Cập nhật: 31/05/2025*
-
-## 7. Tích hợp với hệ thống AuthN/AuthZ hiện tại
-
-### 7.1 Tích hợp AuthN Service
-
-```mermaid
-sequenceDiagram
-    participant Client
-    participant AuthN
-    participant Legacy[Legacy Auth System]
-    participant DB[(User DB)]
-    
-    Client->>AuthN: Login Request
-    AuthN->>Legacy: Validate Credentials
-    Legacy->>DB: Check User Data
-    DB-->>Legacy: User Info
-    Legacy-->>AuthN: Auth Result
-    AuthN->>AuthN: Generate JWT
-    AuthN-->>Client: JWT Token
-    
-    Note over Client,DB: Token Refresh Flow
-    Client->>AuthN: Refresh Token
-    AuthN->>Legacy: Validate Refresh Token
-    Legacy-->>AuthN: Token Valid
-    AuthN->>AuthN: Generate New JWT
-    AuthN-->>Client: New JWT Token
-```
-
-```mermaid
-sequenceDiagram
-    participant Service[Other Service]
-    participant AuthN[AuthN Service]
-    
-    Note over Service,AuthN: JWT Validation Flow
-    Service->>AuthN: ValidateToken(JWT)
-    AuthN->>AuthN: Verify Signature
-    AuthN->>AuthN: Check Expiration
-    AuthN->>AuthN: Validate Claims
-    AuthN-->>Service: Validation Result
-    
-    Note over Service,AuthN: JWK Management
-    AuthN->>AuthN: Generate Key Pair
-    AuthN->>AuthN: Store Private Key
-    AuthN->>AuthN: Publish Public Key
-```
-
-* **Tích hợp xác thực**:
-  * Sử dụng API Gateway hiện tại để xác thực
-  * Chuyển đổi session token sang JWT
-  * Hỗ trợ SSO với hệ thống hiện tại
-  * Duy trì backward compatibility
-
-* **Quản lý phiên**:
-  * Đồng bộ session giữa hệ thống cũ và mới
-  * Hỗ trợ token refresh
-  * Xử lý logout đồng bộ
-  * Theo dõi trạng thái phiên
-
-* **JWT Management & Validation**:
-  * AuthN Service quản lý toàn bộ lifecycle của JWT
-  * Expose gRPC endpoint cho các service khác validate token
-  * Tự động rotate key pairs
-  * Cache validation results
-  * Hỗ trợ token revocation
-
-* **Tính năng bảo mật**:
-  * Sử dụng RSA/ECDSA key pairs cho JWT signing
-  * Private key được lưu trữ an toàn trong AuthN Service
-  * Public key được publish cho các service khác
-  * Rate limiting cho validation requests
-  * Audit log cho mọi validation request
-
-### 7.2 Tích hợp AuthZ Service
-
-```mermaid
-sequenceDiagram
-    participant Client
-    participant AuthZ
-    participant Legacy[Legacy RBAC]
-    participant DB[(RBAC DB)]
-    
-    Client->>AuthZ: Check Permission
-    AuthZ->>Legacy: Get User Roles
-    Legacy->>DB: Query Permissions
-    DB-->>Legacy: Role Data
-    Legacy-->>AuthZ: Permission Result
-    AuthZ->>AuthZ: Apply Policies
-    AuthZ-->>Client: Access Decision
-```
-
-* **Tích hợp phân quyền**:
-  * Map roles từ hệ thống cũ sang RBAC mới
-  * Chuyển đổi permissions format
-  * Hỗ trợ policy inheritance
-  * Duy trì audit trail
-
-* **Quản lý quyền**:
-  * Đồng bộ role changes
-  * Validate permissions
-  * Cache permission data
-  * Log access decisions
-
-### 7.3 Yêu cầu kỹ thuật
-
-* **API Integration**:
-  * REST API endpoints cho AuthN/AuthZ
-  * gRPC services cho internal calls
-  * WebSocket cho real-time updates
-  * Rate limiting và circuit breaking
-
-* **Data Migration**:
-  * Migrate user data
-  * Convert role mappings
-  * Preserve audit logs
-  * Validate data integrity
-
-* **Security**:
-  * Encrypt sensitive data
-  * Secure API communication
-  * Monitor integration points
-  * Regular security audits
-
-* **Monitoring**:
-  * Track integration metrics
-  * Alert on failures
-  * Monitor performance
-  * Log integration events
-
-*Cập nhật: 31/05/2025* 
-
-## 8. Interface giữa các Service
-
-### 8.1 DID ↔ AuthN Interface
+### 5.1 DID ↔ AuthN Interface
 
 ```protobuf
 service DIDService {
@@ -484,7 +189,7 @@ enum KYCStatus {
 }
 ```
 
-### 8.2 DID ↔ Asset Interface
+### 5.2 DID ↔ Asset Interface
 
 ```protobuf
 service AssetService {
@@ -522,7 +227,7 @@ enum AssetType {
 }
 ```
 
-### 8.3 Asset ↔ Token Interface
+### 5.3 Asset ↔ Token Interface
 
 ```protobuf
 service TokenService {
@@ -565,9 +270,9 @@ message TransferTokenResponse {
 }
 ```
 
-### 8.4 Các Interface khác
+### 5.4 Các Interface khác
 
-#### 8.4.1 AuthN ↔ AuthZ Interface
+#### 5.4.1 AuthN ↔ AuthZ Interface
 
 ```protobuf
 service AuthZService {
@@ -590,7 +295,7 @@ message CheckPermissionResponse {
 }
 ```
 
-#### 8.4.2 Token ↔ Event Interface
+#### 5.4.2 Token ↔ Event Interface
 
 ```protobuf
 service EventService {
@@ -611,7 +316,7 @@ message Event {
 }
 ```
 
-### 8.5 Lưu ý triển khai
+### 5.5 Lưu ý triển khai
 
 * **gRPC Communication**:
   * Sử dụng gRPC cho tất cả internal service communication
@@ -639,9 +344,9 @@ message Event {
 
 *Cập nhật: 31/05/2025* 
 
-## 9. Vai trò người dùng và Phân quyền
+## 6. Vai trò người dùng và Phân quyền
 
-### 9.1 Định nghĩa vai trò
+### 6.1 Định nghĩa vai trò
 
 ```protobuf
 enum UserRole {
@@ -667,9 +372,9 @@ enum UserRole {
 }
 ```
 
-### 9.2 Quyền hạn theo vai trò
+### 6.2 Quyền hạn theo vai trò
 
-#### 9.2.1 Quản trị hệ thống
+#### 6.2.1 Quản trị hệ thống
 * **SYSTEM_ADMIN**:
   * Quản lý toàn bộ hệ thống
   * Cấu hình các tham số hệ thống
@@ -690,7 +395,7 @@ enum UserRole {
   * Tạo báo cáo kiểm toán
   * Không có quyền thực hiện thay đổi
 
-#### 9.2.2 Quản lý tài sản
+#### 6.2.2 Quản lý tài sản
 * **ASSET_OWNER**:
   * Tạo và quản lý tài sản
   * Phát hành token
@@ -709,7 +414,7 @@ enum UserRole {
   * Cập nhật trạng thái tài sản
   * Không có quyền quản lý tài chính
 
-#### 9.2.3 Nhà đầu tư
+#### 6.2.3 Nhà đầu tư
 * **INVESTOR** (Base role):
   * Xem thông tin tài sản
   * Thực hiện giao dịch
@@ -727,7 +432,7 @@ enum UserRole {
   * Truy cập thông tin cơ bản
   * Yêu cầu KYC cơ bản
 
-#### 9.2.4 Đối tác
+#### 6.2.4 Đối tác
 * **BROKER**:
   * Tạo và quản lý đơn hàng
   * Xem thông tin thị trường
@@ -743,7 +448,7 @@ enum UserRole {
   * Tạo báo cáo pháp lý
   * Không có quyền thực hiện thay đổi
 
-### 9.3 Quy trình phân quyền
+### 6.3 Quy trình phân quyền
 
 ```mermaid
 sequenceDiagram
@@ -765,7 +470,7 @@ sequenceDiagram
     AuthZ-->>User: Role & Permissions
 ```
 
-### 9.4 Policy Management
+### 6.4 Policy Management
 
 ```protobuf
 message RolePolicy {
@@ -785,7 +490,7 @@ message UserPolicy {
 }
 ```
 
-### 9.5 Lưu ý triển khai
+### 6.5 Lưu ý triển khai
 
 * **Role Hierarchy**:
   * Implement role inheritance
@@ -810,5 +515,62 @@ message UserPolicy {
   * Monitor permission usage
   * Alert on policy violations
   * Regular compliance reports
+
+*Cập nhật: 31/05/2025*
+
+## 7. Quy trình nghiệp vụ
+
+### 7.1 Quy trình token hóa tài sản
+```mermaid
+sequenceDiagram
+    participant Owner
+    participant System
+    participant Compliance
+    participant Blockchain
+    
+    Owner->>System: Yêu cầu token hóa
+    System->>Compliance: Kiểm tra tuân thủ
+    Compliance-->>System: Phê duyệt
+    System->>Blockchain: Tạo token
+    Blockchain-->>System: Xác nhận
+    System-->>Owner: Thông báo hoàn tất
+```
+
+### 7.2 Quy trình giao dịch
+```mermaid
+sequenceDiagram
+    participant Buyer
+    participant Seller
+    participant System
+    participant Blockchain
+    
+    Buyer->>System: Đặt lệnh mua
+    Seller->>System: Đặt lệnh bán
+    System->>System: Khớp lệnh
+    System->>Blockchain: Thực hiện giao dịch
+    Blockchain-->>System: Xác nhận
+    System-->>Buyer: Cập nhật số dư
+    System-->>Seller: Cập nhật số dư
+```
+
+## 8. Triển khai và Vận hành
+
+### 8.1 Yêu cầu triển khai
+* Kubernetes cluster
+* Hyperledger Fabric network
+* Database cluster
+* Monitoring system
+
+### 8.2 Quy trình vận hành
+* Monitoring và alerting
+* Backup và restore
+* Scaling và load balancing
+* Security patching
+
+### 8.3 Kế hoạch triển khai
+* Phase 1: Core services
+* Phase 2: Token management
+* Phase 3: Trading features
+* Phase 4: Advanced features
 
 *Cập nhật: 31/05/2025*
