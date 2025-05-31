@@ -7,12 +7,14 @@
 * Tạo nền tảng giao dịch tài sản số an toàn và tuân thủ quy định
 * Tối ưu hóa quản lý tài sản và phân phối lợi tức
 * Cung cấp theo dõi quyền sở hữu và lịch sử giao dịch minh bạch
+* Đảm bảo hiệu suất cao và xử lý giao dịch thời gian thực
 
 ### 1.2 Thị Trường Mục Tiêu
 * Chủ sở hữu tài sản muốn token hóa tài sản của họ
 * Nhà đầu tư tìm kiếm cơ hội sở hữu từng phần
 * Tổ chức tài chính yêu cầu tuân thủ quy định
 * Chủ đầu tư và quản lý bất động sản
+* Nhà giao dịch tần suất cao và tạo lập thị trường
 
 ### 1.3 Các Bên Liên Quan Chính
 * Chủ Sở Hữu Tài Sản
@@ -20,6 +22,7 @@
 * Cơ Quan Quản Lý
 * Tổ Chức Tài Chính
 * Quản Trị Viên Nền Tảng
+* Đối Tác Công Nghệ
 
 ---
 
@@ -36,6 +39,10 @@
   * Chứng chỉ tiền gửi (CDs)
   * Chứng chỉ quỹ đầu tư (IFCs)
   * Stablecoin (bảo chứng bởi tiền pháp định/hàng hóa/crypto)
+* Tài Sản Số
+  * NFTs
+  * Fractional NFTs
+  * Security Tokens
 
 #### 2.1.2 Quy Trình Token Hóa
 * Đánh Giá Tài Sản
@@ -50,6 +57,10 @@
   * Xác minh KYC/AML
   * Báo cáo quy định
   * Duy trì lịch sử kiểm toán
+* Xử Lý Thời Gian Thực
+  * Xử lý giao dịch thông lượng cao
+  * Streaming sự kiện cho cập nhật thời gian thực
+  * Thời gian phản hồi độ trễ thấp
 
 ### 2.2 Giao Dịch & Sàn Giao Dịch
 
@@ -62,12 +73,17 @@
   * Quản lý sổ lệnh
   * Khám phá giá
   * Hồ bơi thanh khoản
+* Giao Dịch Thời Gian Thực
+  * Cập nhật giá streaming
+  * Thực hiện lệnh tức thì
+  * Thanh toán thời gian thực
 
 #### 2.2.2 Quy Trình Thanh Toán
 * Giao nhận thanh toán (DvP)
 * Thanh toán tự động
 * Xác nhận giao dịch
 * Báo cáo thanh toán
+* Trạng thái thanh toán thời gian thực
 
 ### 2.3 Quản Lý Tài Sản
 
@@ -76,18 +92,21 @@
 * Chuyển nhượng quyền sở hữu
 * Hồ sơ sở hữu thực tế
 * Xác minh quyền sở hữu
+* Cập nhật quyền sở hữu thời gian thực
 
 #### 2.3.2 Phân Phối Lợi Tức
 * Tính toán lợi tức tự động
 * Lập lịch phân phối
 * Xử lý thanh toán
 * Báo cáo thuế
+* Theo dõi lợi tức thời gian thực
 
 #### 2.3.3 Kế Hoạch Đầu Tư Định Kỳ (SIP)
 * Lập lịch đầu tư
 * Mua tự động
 * Tái cân bằng danh mục
 * Theo dõi hiệu suất
+* Cập nhật danh mục thời gian thực
 
 ### 2.4 Tuân Thủ & Báo Cáo
 
@@ -96,12 +115,14 @@
 * Giám sát giao dịch
 * Báo cáo quy định
 * Duy trì lịch sử kiểm toán
+* Kiểm tra tuân thủ thời gian thực
 
 #### 2.4.2 Yêu Cầu Báo Cáo
 * Báo cáo sở hữu
 * Báo cáo giao dịch
 * Báo cáo thuế
 * Hồ sơ quy định
+* Khả năng báo cáo thời gian thực
 
 ---
 
@@ -115,6 +136,7 @@
 5. Phê duyệt quy định
 6. Phát hành token
 7. Phân phối ban đầu
+8. Giám sát thời gian thực
 
 ### 3.2 Quy Trình Giao Dịch
 1. Đặt lệnh
@@ -124,6 +146,7 @@
 5. Chuyển tài sản
 6. Xử lý thanh toán
 7. Xác nhận giao dịch
+8. Cập nhật trạng thái thời gian thực
 
 ### 3.3 Quy Trình Phân Phối Lợi Tức
 1. Tính toán lợi tức
@@ -132,6 +155,7 @@
 4. Xử lý thanh toán
 5. Ghi nhận giao dịch
 6. Tạo báo cáo
+7. Theo dõi phân phối thời gian thực
 
 ---
 
@@ -143,6 +167,7 @@
 * Giới hạn giá
 * Thời gian thanh toán
 * Hạn chế giao dịch
+* Thực thi quy tắc thời gian thực
 
 ### 4.2 Quy Tắc Tuân Thủ
 * Yêu cầu KYC
@@ -150,6 +175,7 @@
 * Thời hạn báo cáo
 * Yêu cầu tài liệu
 * Hạn chế quy định
+* Giám sát tuân thủ thời gian thực
 
 ### 4.3 Quy Tắc Quản Lý Tài Sản
 * Giới hạn sở hữu
@@ -157,6 +183,7 @@
 * Điều kiện nhận lợi tức
 * Quyền biểu quyết
 * Điều khoản mua lại
+* Xác thực quy tắc thời gian thực
 
 ---
 
@@ -169,6 +196,8 @@
 * Tỷ lệ giao dịch thành công
 * Thời gian hoạt động hệ thống
 * Điểm tuân thủ
+* Độ trễ giao dịch
+* Chỉ số xử lý thời gian thực
 
 ### 5.2 Mục Tiêu Nghiệp Vụ
 * Thâm nhập thị trường
@@ -177,6 +206,8 @@
 * Hiệu quả giao dịch
 * Tuân thủ quy định
 * Sự hài lòng của khách hàng
+* Hiệu suất hệ thống
+* Khả năng thời gian thực
 
 ---
 
@@ -188,6 +219,7 @@
 * Cạnh tranh
 * Áp dụng công nghệ
 * Rủi ro vận hành
+* Rủi ro hiệu suất hệ thống
 
 ### 6.2 Chiến Lược Giảm Thiểu
 * Đa dạng hóa
@@ -195,5 +227,8 @@
 * Cập nhật công nghệ
 * Biện pháp bảo mật
 * Bảo hiểm
+* Tối ưu hóa hiệu suất
+* Giám sát thời gian thực
+* Quản lý rủi ro tự động
 
 *Cập nhật: 31/05/2025* 
