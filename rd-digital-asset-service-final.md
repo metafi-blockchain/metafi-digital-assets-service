@@ -3,7 +3,6 @@
 ## Mục lục
 1. [Tổng quan](#1-tổng-quan)
 2. [Kiến trúc hệ thống](#2-kiến-trúc-hệ-thống)
-3. [Token Service](#25-token-service)
 3. [Yêu cầu chức năng](#3-yêu-cầu-chức-năng)
 4. [Yêu cầu phi chức năng](#4-yêu-cầu-phi-chức-năng)
 5. [Interface giữa các Service](#5-interface-giữa-các-service)
@@ -92,8 +91,7 @@ graph TD
         AuthZ[AuthZ Service]
         DID[DID Service]
         Asset[Asset Service]
-        Token[Token Service
-(sử dụng Token SDK)]
+        Token[Token Service]
     end
 
     subgraph "Blockchain Layer"
@@ -125,44 +123,44 @@ graph TD
 ```
 
 ### 2.2 Các thành phần chính
-* **Asset Service**: 
-  * Quản lý thông tin tài sản và metadata
-  * Xử lý token hóa và quản lý vòng đời token thông qua Token SDK
-  * Xử lý giao dịch token trên Fabric Network
-  * Tích hợp với Fabric và DID Service
-  * Quản lý số dư và trạng thái
 
+#### 2.2.1 Asset Service
+* Quản lý thông tin tài sản và metadata
+* Xử lý token hóa và quản lý vòng đời token thông qua Token SDK
+* Xử lý giao dịch token trên Fabric Network
+* Tích hợp với Fabric và DID Service
+* Quản lý số dư và trạng thái
 
-* **Token Service**: 
-  * Quản lý lifecycle của token tách biệt khỏi metadata tài sản
-  * Cung cấp chức năng: mint, burn, transfer, balance, history
-  * Tương tác với Hyperledger Fabric thông qua chaincode ERC-20 hoặc Token SDK
-  * Có khả năng mở rộng các chức năng như marketplace, staking, hoặc phân phối lợi nhuận
+#### 2.2.2 Token Service
+* Quản lý lifecycle của token tách biệt khỏi metadata tài sản
+* Cung cấp chức năng: mint, burn, transfer, balance, history
+* Tương tác với Hyperledger Fabric thông qua chaincode ERC-20 hoặc Token SDK
+* Có khả năng mở rộng các chức năng như marketplace, staking, hoặc phân phối lợi nhuận
 
-* **Token SDK/Chaincode** (thư viện nội bộ):
-  * Cung cấp hàm logic chuẩn để mint, transfer, burn token
-  * Được gọi trực tiếp bởi Token Service
-  * Được đóng gói dưới dạng chaincode để triển khai lên Hyperledger Fabric
-  * Không phải là một service độc lập
-  * Cung cấp các hàm cơ bản cho token (mint, transfer, burn)
-  * Quản lý trạng thái token trên blockchain
-  * Xác thực giao dịch token
-  * Tích hợp với Fabric Network
+#### 2.2.3 Token SDK/Chaincode
+* Cung cấp hàm logic chuẩn để mint, transfer, burn token
+* Được gọi trực tiếp bởi Token Service
+* Được đóng gói dưới dạng chaincode để triển khai lên Hyperledger Fabric
+* Không phải là một service độc lập
+* Cung cấp các hàm cơ bản cho token (mint, transfer, burn)
+* Quản lý trạng thái token trên blockchain
+* Xác thực giao dịch token
+* Tích hợp với Fabric Network
 
-* **AuthN Service**:
-  * Xác thực người dùng
-  * Quản lý phiên
-  * Cấp phát JWT
+#### 2.2.4 AuthN Service
+* Xác thực người dùng
+* Quản lý phiên
+* Cấp phát JWT
 
-* **AuthZ Service**:
-  * Phân quyền truy cập
-  * Quản lý vai trò
-  * Kiểm tra quyền
+#### 2.2.5 AuthZ Service
+* Phân quyền truy cập
+* Quản lý vai trò
+* Kiểm tra quyền
 
-* **DID Service**:
-  * Quản lý danh tính
-  * Xác thực KYC
-  * Cấp phát MSP Identity
+#### 2.2.6 DID Service
+* Quản lý danh tính
+* Xác thực KYC
+* Cấp phát MSP Identity
 
 ### 2.3 Luồng xử lý tài sản
 
@@ -198,7 +196,6 @@ sequenceDiagram
 
 ### 2.4 Luồng giao dịch
 
-
 ```mermaid
 sequenceDiagram
     participant User
@@ -220,6 +217,58 @@ sequenceDiagram
     
     Asset-->>User: Transfer Confirmed
 ```
+
+## 3. Yêu cầu chức năng
+
+### 3.1 Quản lý tài sản
+* Tạo và cập nhật thông tin tài sản
+* Token hóa tài sản
+* Quản lý quyền sở hữu
+* Theo dõi trạng thái tài sản
+
+### 3.2 Quản lý token
+* Phát hành token (mint)
+* Hủy token (burn)
+* Chuyển token (transfer)
+* Quản lý số dư
+* Lịch sử giao dịch
+
+### 3.3 Quản lý người dùng
+* Đăng ký và xác thực
+* Phân quyền truy cập
+* Quản lý danh tính
+* KYC/AML
+
+### 3.4 Giao dịch
+* Đặt lệnh mua/bán
+* Khớp lệnh
+* Thực hiện giao dịch
+* Xác nhận giao dịch
+
+## 4. Yêu cầu phi chức năng
+
+### 4.1 Hiệu năng
+* Thời gian phản hồi < 500ms
+* Xử lý đồng thời > 1000 TPS
+* Độ trễ giao dịch < 2s
+
+### 4.2 Bảo mật
+* Mã hóa end-to-end
+* Xác thực đa yếu tố
+* Kiểm soát truy cập
+* Audit logging
+
+### 4.3 Khả năng mở rộng
+* Horizontal scaling
+* Load balancing
+* Microservices architecture
+* Container orchestration
+
+### 4.4 Độ tin cậy
+* High availability
+* Fault tolerance
+* Disaster recovery
+* Data backup
 
 ## 5. Interface giữa các Service
 
@@ -380,8 +429,6 @@ enum AssetType {
   * Monitor error rates
   * Alert khi có vấn đề
   * Log đầy đủ thông tin cho debugging
-
-*Cập nhật: 31/05/2025*
 
 ## 6. Vai trò người dùng và Phân quyền
 
@@ -555,8 +602,6 @@ message UserPolicy {
   * Alert on policy violations
   * Regular compliance reports
 
-*Cập nhật: 31/05/2025*
-
 ## 7. Quy trình nghiệp vụ
 
 ### 7.1 Quy trình token hóa tài sản
@@ -613,84 +658,3 @@ sequenceDiagram
 * Phase 4: Advanced features
 
 *Cập nhật: 31/05/2025*
-
-## 2.5 Token Service
-
-### 2.5.1 Mục tiêu
-
-`Token Service` là một microservice độc lập phụ trách toàn bộ nghiệp vụ liên quan đến việc **tạo, quản lý, chuyển giao và giám sát token** được phát hành từ các tài sản số. Việc tách riêng `Token Service` nhằm đảm bảo khả năng mở rộng, hiệu năng, và dễ dàng tích hợp các tính năng nâng cao như marketplace, staking, và phân phối lợi nhuận.
-
-### 2.5.2 Chức năng chính
-
-| Chức năng | Mô tả |
-|----------|------|
-| **Mint** | Phát hành token mới dựa trên tài sản đã được duyệt |
-| **Burn** | Hủy token trong các trường hợp thu hồi, giải thể tài sản |
-| **Transfer** | Chuyển token giữa các DID/user |
-| **Balance** | Truy vấn số dư token theo DID hoặc địa chỉ |
-| **Allowance / Approve** | Cho phép bên thứ ba thực hiện chuyển token thay mặt |
-| **Transaction History** | Ghi nhận và truy vấn lịch sử giao dịch token |
-| **Marketplace (tùy chọn)** | Tạo order, khớp lệnh, quản lý giao dịch token P2P |
-| **Dividend Distribution (tùy chọn)** | Phân phối lợi nhuận dựa trên tỷ lệ sở hữu token |
-
-### 2.5.3 Kiến trúc tích hợp
-
-```mermaid
-graph TD
-    subgraph "Client Layer"
-        Web[Web App]
-        Mobile[Mobile App]
-        API[API Client]
-    end
-
-    subgraph "Service Layer"
-        AuthN[AuthN Service]
-        AuthZ[AuthZ Service]
-        DID[DID Service]
-        Asset[Asset Service]
-        Token[Token Service
-(sử dụng Token SDK)]
-    end
-
-    subgraph "Blockchain Layer"
-        Fabric[Fabric Network]
-        MSP[MSP Identity]
-    end
-
-    subgraph "Storage Layer"
-        DB[(Database)]
-        Cache[(Redis Cache)]
-        Storage[(IPFS/MinIO)]
-    end
-
-    Web --> Asset
-    Mobile --> Asset
-    API --> Asset
-
-    Asset --> AuthN
-    Asset --> AuthZ
-    Asset --> DID
-    Asset --> Token
-
-    Token --> Fabric
-    DID --> Fabric
-
-    Asset --> DB
-    Asset --> Cache
-    Asset --> Storage
-```
-
-### 2.5.4 Mối quan hệ với các dịch vụ khác
-
-- **Asset Service**: chỉ gọi `Token Service` để mint/burn khi tài sản đã đạt trạng thái `approved`
-- **AuthZ Service**: kiểm tra quyền khi thực hiện các thao tác với token (mint, transfer, burn)
-- **DID Middleware**: cung cấp DID và thông tin định danh vào context request token
-- **Fabric Chaincode**: ghi nhận giao dịch token (ERC-20 logic hoặc Token SDK)
-
-### 2.5.5 Gợi ý triển khai
-
-- Giao tiếp qua gRPC giữa Asset ↔ Token
-- Lưu balance và history trên Fabric (immutable)
-- Cache một phần thông tin trong PostgreSQL hoặc Redis để phục vụ API
-- Tách logic xử lý token ra khỏi metadata tài sản để tăng khả năng mở rộng
-- Có thể bổ sung logic escrow, whitelist/blacklist, hoặc compliance rule trong marketplace
