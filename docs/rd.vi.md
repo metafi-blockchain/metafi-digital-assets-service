@@ -706,16 +706,23 @@ enum ComplianceStatus {
 ```mermaid
 sequenceDiagram
     participant Owner
-    participant System
-    participant Compliance
+    participant AssetService
+    participant ComplianceService
+    participant TokenService
     participant Blockchain
-    
-    Owner->>System: Yêu cầu token hóa
-    System->>Compliance: Kiểm tra tuân thủ
-    Compliance-->>System: Phê duyệt
-    System->>Blockchain: Tạo token
-    Blockchain-->>System: Xác nhận
-    System-->>Owner: Thông báo hoàn tất
+
+    Owner->>AssetService: Yêu cầu token hóa tài sản (asset_id, metadata)
+    AssetService->>ComplianceService: Gửi thông tin để kiểm tra tuân thủ
+
+    ComplianceService->>ComplianceService: Xử lý KYC/AML, xác minh pháp lý
+    ComplianceService-->>AssetService: Phê duyệt token hóa
+
+    AssetService->>TokenService: Yêu cầu tạo token (asset_id, owner_did, total_supply)
+    TokenService->>Blockchain: Triển khai token (mint hoặc issue)
+    Blockchain-->>TokenService: Xác nhận thành công (tx_hash)
+
+    TokenService-->>AssetService: Trả kết quả (token_id, tx_hash)
+    AssetService-->>Owner: Thông báo hoàn tất token hóa (token_id, status)
 ```
 
 ### 7.2 Quy trình giao dịch
@@ -724,16 +731,24 @@ sequenceDiagram
 sequenceDiagram
     participant Buyer
     participant Seller
-    participant System
+    participant OrderService
+    participant MatchingEngine
+    participant TokenService
     participant Blockchain
-    
-    Buyer->>System: Đặt lệnh mua
-    Seller->>System: Đặt lệnh bán
-    System->>System: Khớp lệnh
-    System->>Blockchain: Thực hiện giao dịch
-    Blockchain-->>System: Xác nhận
-    System-->>Buyer: Cập nhật số dư
-    System-->>Seller: Cập nhật số dư
+
+    Buyer->>OrderService: Đặt lệnh mua (buy order)
+    Seller->>OrderService: Đặt lệnh bán (sell order)
+
+    OrderService->>MatchingEngine: Gửi lệnh để khớp
+    MatchingEngine->>MatchingEngine: Khớp lệnh và tạo giao dịch
+    MatchingEngine->>TokenService: Yêu cầu thực hiện giao dịch (fraction_id, amount, from_did, to_did)
+
+    TokenService->>Blockchain: Gửi giao dịch chuyển token
+    Blockchain-->>TokenService: Xác nhận thành công (tx_hash)
+
+    TokenService-->>OrderService: Giao dịch thành công
+    OrderService-->>Buyer: Cập nhật trạng thái đơn mua
+    OrderService-->>Seller: Cập nhật trạng thái đơn bán
 ```
 
 ## 8. Triển khai và Vận hành
