@@ -158,7 +158,101 @@ sequenceDiagram
 
 ## 5. Interface giữa các Service
 
-### 5.1 Asset ↔ DID Interface
+### 5.1 Asset ↔ AuthN Interface
+
+```protobuf
+service AuthNService {
+    // Xác thực JWT token
+    rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse);
+    
+    // Lấy thông tin người dùng từ token
+    rpc GetUserInfo(GetUserInfoRequest) returns (GetUserInfoResponse);
+    
+    // Kiểm tra phiên làm việc
+    rpc ValidateSession(ValidateSessionRequest) returns (ValidateSessionResponse);
+}
+
+message ValidateTokenRequest {
+    string jwt_token = 1;
+}
+
+message ValidateTokenResponse {
+    bool is_valid = 1;
+    string user_id = 2;
+    repeated string roles = 3;
+    int64 expires_at = 4;
+}
+
+message GetUserInfoRequest {
+    string user_id = 1;
+}
+
+message GetUserInfoResponse {
+    string user_id = 1;
+    string email = 2;
+    string full_name = 3;
+    repeated string roles = 4;
+    bool is_active = 5;
+}
+
+message ValidateSessionRequest {
+    string session_id = 1;
+}
+
+message ValidateSessionResponse {
+    bool is_valid = 1;
+    string user_id = 2;
+    int64 expires_at = 3;
+}
+```
+
+### 5.2 Asset ↔ AuthZ Interface
+
+```protobuf
+service AuthZService {
+    // Kiểm tra quyền truy cập
+    rpc CheckPermission(CheckPermissionRequest) returns (CheckPermissionResponse);
+    
+    // Lấy danh sách quyền của user
+    rpc GetUserPermissions(GetUserPermissionsRequest) returns (GetUserPermissionsResponse);
+    
+    // Kiểm tra quyền sở hữu tài sản
+    rpc CheckAssetOwnership(CheckAssetOwnershipRequest) returns (CheckAssetOwnershipResponse);
+}
+
+message CheckPermissionRequest {
+    string user_id = 1;
+    string resource = 2;
+    string action = 3;
+}
+
+message CheckPermissionResponse {
+    bool allowed = 1;
+    string reason = 2;
+}
+
+message GetUserPermissionsRequest {
+    string user_id = 1;
+}
+
+message GetUserPermissionsResponse {
+    repeated string permissions = 1;
+    map<string, string> constraints = 2;
+}
+
+message CheckAssetOwnershipRequest {
+    string user_id = 1;
+    string asset_id = 2;
+}
+
+message CheckAssetOwnershipResponse {
+    bool is_owner = 1;
+    string ownership_type = 2; // FULL, PARTIAL, NONE
+    double ownership_percentage = 3;
+}
+```
+
+### 5.3 Asset ↔ DID Interface
 
 ```protobuf
 service AssetService {
@@ -193,70 +287,6 @@ enum AssetType {
     CERTIFICATE_OF_DEPOSIT = 1;
     INVESTMENT_FUND = 2;
     STABLECOIN = 3;
-}
-```
-
-### 5.2 Asset ↔ Token Interface
-
-```protobuf
-service TokenService {
-    // Tạo token cho tài sản
-    rpc MintToken(MintTokenRequest) returns (MintTokenResponse);
-    
-    // Chuyển token
-    rpc TransferToken(TransferTokenRequest) returns (TransferTokenResponse);
-    
-    // Hủy token
-    rpc BurnToken(BurnTokenRequest) returns (BurnTokenResponse);
-    
-    // Lấy thông tin token
-    rpc GetToken(GetTokenRequest) returns (GetTokenResponse);
-}
-
-message MintTokenRequest {
-    string asset_id = 1;
-    string owner_did = 2;
-    uint64 amount = 3;
-    string metadata_uri = 4;
-}
-
-message MintTokenResponse {
-    string token_id = 1;
-    string transaction_id = 2;
-    string status = 3;
-}
-
-message TransferTokenRequest {
-    string token_id = 1;
-    string from_did = 2;
-    string to_did = 3;
-    uint64 amount = 4;
-}
-
-message TransferTokenResponse {
-    string transaction_id = 1;
-    string status = 2;
-}
-```
-
-### 5.3 Asset ↔ Event Interface
-
-```protobuf
-service EventService {
-    // Đăng ký lắng nghe sự kiện
-    rpc Subscribe(SubscribeRequest) returns (stream Event);
-    
-    // Publish sự kiện
-    rpc Publish(PublishRequest) returns (PublishResponse);
-}
-
-message Event {
-    string event_type = 1;
-    string token_id = 2;
-    string transaction_id = 3;
-    string status = 4;
-    int64 timestamp = 5;
-    map<string, string> metadata = 6;
 }
 ```
 
