@@ -87,6 +87,60 @@ graph TD
 * **Token Service**: Quản lý token và giao dịch
 * **Event Service**: Xử lý sự kiện realtime
 
+### 2.2 Luồng xử lý Token
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Client
+    participant AuthN
+    participant AuthZ
+    participant Token
+    participant Fabric
+    
+    User->>Client: Yêu cầu tạo token
+    Client->>AuthN: Validate JWT
+    AuthN-->>Client: JWT Valid
+    
+    Client->>AuthZ: Check Permission
+    AuthZ-->>Client: Permission Granted
+    
+    Client->>Token: Mint Token Request
+    Token->>Fabric: Submit Mint Transaction
+    Fabric->>Fabric: Validate & Commit
+    Fabric-->>Token: Mint Result
+    
+    Token->>Token: Update Token State
+    Token-->>Client: Token Created
+    Client-->>User: Token Info
+```
+
+### 2.3 Tích hợp Token Service
+
+* **Token Service**:
+  * Quản lý vòng đời token
+  * Xử lý giao dịch token
+  * Tích hợp với Fabric Token SDK
+  * Quản lý metadata token
+
+* **Fabric Integration**:
+  * Sử dụng Fabric Token SDK
+  * Quản lý UTXO
+  * Xử lý giao dịch
+  * Đồng bộ trạng thái
+
+* **Quy trình giao dịch**:
+  * Xác thực người dùng
+  * Kiểm tra quyền
+  * Thực hiện giao dịch
+  * Cập nhật trạng thái
+
+* **Tính năng bảo mật**:
+  * Kiểm tra quyền chi tiết
+  * Xác thực giao dịch
+  * Audit trail
+  * Rate limiting
+
 ## 3. Yêu cầu chức năng
 
 ### 3.1 Quản lý tài sản

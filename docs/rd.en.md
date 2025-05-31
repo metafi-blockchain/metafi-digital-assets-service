@@ -87,6 +87,60 @@ graph TD
 * **Token Service**: Token and transaction management
 * **Event Service**: Real-time event processing
 
+### 2.2 Token Processing Flow
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Client
+    participant AuthN
+    participant AuthZ
+    participant Token
+    participant Fabric
+    
+    User->>Client: Token creation request
+    Client->>AuthN: Validate JWT
+    AuthN-->>Client: JWT Valid
+    
+    Client->>AuthZ: Check Permission
+    AuthZ-->>Client: Permission Granted
+    
+    Client->>Token: Mint Token Request
+    Token->>Fabric: Submit Mint Transaction
+    Fabric->>Fabric: Validate & Commit
+    Fabric-->>Token: Mint Result
+    
+    Token->>Token: Update Token State
+    Token-->>Client: Token Created
+    Client-->>User: Token Info
+```
+
+### 2.3 Token Service Integration
+
+* **Token Service**:
+  * Token lifecycle management
+  * Token transaction processing
+  * Fabric Token SDK integration
+  * Token metadata management
+
+* **Fabric Integration**:
+  * Use Fabric Token SDK
+  * UTXO management
+  * Transaction processing
+  * State synchronization
+
+* **Transaction Process**:
+  * User authentication
+  * Permission checking
+  * Transaction execution
+  * State updates
+
+* **Security Features**:
+  * Detailed permission checks
+  * Transaction validation
+  * Audit trail
+  * Rate limiting
+
 ## 3. Functional Requirements
 
 ### 3.1 Asset Management
