@@ -16,17 +16,17 @@
 Xây dựng hệ thống quản lý tài sản số (Digital Asset Service) tích hợp với các dịch vụ xác thực và phân quyền, hỗ trợ việc token hóa và quản lý tài sản truyền thống như bất động sản, chứng chỉ tiền gửi, và quỹ đầu tư.
 
 ### 1.2 Phạm vi
-* Token hóa tài sản vật lý và tài chính
-* Quản lý quyền sở hữu và giao dịch
-* Tích hợp với AuthN Service cho xác thực người dùng
-* Tích hợp với AuthZ Service cho phân quyền truy cập
-* Tích hợp với DID Service cho quản lý danh tính
+- Token hóa tài sản vật lý và tài chính
+- Quản lý quyền sở hữu và giao dịch
+- Tích hợp với AuthN Service cho xác thực người dùng
+- Tích hợp với AuthZ Service cho phân quyền truy cập
+- Tích hợp với DID Service cho quản lý danh tính
 
 ### 1.3 Đối tượng người dùng
-* Chủ sở hữu tài sản
-* Nhà đầu tư
-* Quản trị viên hệ thống
-* Đối tác và bên thứ ba
+- Chủ sở hữu tài sản
+- Nhà đầu tư
+- Quản trị viên hệ thống
+- Đối tác và bên thứ ba
 
 ## 2. Kiến trúc hệ thống
 
@@ -136,35 +136,50 @@ graph TD
 ### 2.2 Các thành phần chính
 
 #### 2.2.1 Asset Service
-* Quản lý thông tin và metadata của tài sản (real estate, CD, fund...)
-* Xác thực DID chủ sở hữu tài sản khi tạo và cập nhật
-* Kích hoạt quá trình token hóa bằng cách gọi Token Service khi tài sản được phê duyệt
-* Ghi thông tin tài sản (metadata hash, approval event...) lên Fabric nếu cần đảm bảo tính bất biến
-* Quản lý trạng thái vòng đời tài sản (Draft → Submitted → Approved → Tokenized → Archived)
-* Theo dõi và đồng bộ trạng thái token thông qua event từ Token Service
+- Quản lý thông tin và metadata của tài sản (real estate, CD, fund...)
+- Xác thực DID chủ sở hữu tài sản khi tạo và cập nhật
+- Kích hoạt quá trình token hóa bằng cách gọi Token Service khi tài sản được phê duyệt
+- Ghi thông tin tài sản (metadata hash, approval event...) lên Fabric nếu cần đảm bảo tính bất biến
+- Quản lý trạng thái vòng đời tài sản (Draft → Submitted → Approved/Rejected/AwaitingFix → Tokenized → Archived)
+- Theo dõi và đồng bộ trạng thái token thông qua event từ Token Service
+- Ghi log audit cho mọi thay đổi metadata và trạng thái tài sản với thông tin:
+  - Thời gian thay đổi
+  - Người thực hiện (DID)
+  - Loại thay đổi (metadata/state)
+  - Giá trị cũ và mới
+  - Lý do thay đổi
+  - Transaction hash (nếu có)
+  - IP address và user agent
+  - Session ID
+- Xử lý trạng thái Rejected và AwaitingFix:
+  - Cho phép chuyển trạng thái từ Submitted → Rejected/AwaitingFix
+  - Yêu cầu lý do từ chối hoặc yêu cầu sửa đổi
+  - Thông báo cho chủ sở hữu tài sản
+  - Cho phép chủ sở hữu cập nhật và gửi lại từ trạng thái AwaitingFix
+  - Lưu lịch sử các lần từ chối và yêu cầu sửa đổi
 
 #### 2.2.2 Token Service
-* Chịu trách nhiệm toàn bộ về vòng đời token (mint, burn, transfer, query balance, transaction history)
-* Tương tác trực tiếp với Hyperledger Fabric thông qua chaincode chuẩn ERC-20 hoặc mô-đun Token SDK
-* Nhận yêu cầu token hóa từ Asset Service và xác nhận lại DID trước khi mint token
-* Ghi log giao dịch và số dư token vào hệ thống lưu trữ riêng (có thể dùng PostgreSQL hoặc MongoDB cho truy vấn nhanh)
-* Hỗ trợ mở rộng: Marketplace (đặt lệnh giao dịch), Staking, Quản lý cổ tức/phân phối lợi nhuận
-* Cung cấp gRPC/REST interface cho các dịch vụ khác (Asset, Wallet, Marketplace) để truy cập dữ liệu token
+- Chịu trách nhiệm toàn bộ về vòng đời token (mint, burn, transfer, query balance, transaction history)
+- Tương tác trực tiếp với Hyperledger Fabric thông qua chaincode chuẩn ERC-20 hoặc mô-đun Token SDK
+- Nhận yêu cầu token hóa từ Asset Service và xác nhận lại DID trước khi mint token
+- Ghi log giao dịch và số dư token vào hệ thống lưu trữ riêng (có thể dùng PostgreSQL hoặc MongoDB cho truy vấn nhanh)
+- Hỗ trợ mở rộng: Marketplace (đặt lệnh giao dịch), Staking, Quản lý cổ tức/phân phối lợi nhuận
+- Cung cấp gRPC/REST interface cho các dịch vụ khác (Asset, Wallet, Marketplace) để truy cập dữ liệu token
 
 #### 2.2.3 AuthN Service
-* Xác thực người dùng
-* Quản lý phiên
-* Cấp phát JWT
+- Xác thực người dùng
+- Quản lý phiên
+- Cấp phát JWT
 
 #### 2.2.4 AuthZ Service
-* Phân quyền truy cập
-* Quản lý vai trò
-* Kiểm tra quyền
+- Phân quyền truy cập
+- Quản lý vai trò
+- Kiểm tra quyền
 
 #### 2.2.5 DID Service
-* Quản lý danh tính
-* Xác thực KYC
-* Cấp phát MSP Identity
+- Quản lý danh tính
+- Xác thực KYC
+- Cấp phát MSP Identity
 
 ### 2.3 Luồng xử lý tài sản
 
@@ -197,16 +212,23 @@ sequenceDiagram
     Asset->>AuthZ: Kiểm tra quyền phê duyệt
     AuthZ-->>Asset: OK
 
-    Asset->>Asset: Cập nhật trạng thái → Approved
-
-    Asset->>Token: Gọi Mint token (kèm asset_id, owner_did, amount...)
-    Token->>Fabric: Gửi giao dịch mint
-    Fabric-->>Token: Mint thành công
-
-    Token-->>Asset: Trả về token_id, tx_hash, status
-    Asset->>Fabric: (tuỳ chọn) ghi metadata hash (immutability proof)
-
-    Asset-->>User: Thông báo tài sản đã tokenized
+    alt Phê duyệt
+        Asset->>Asset: Cập nhật trạng thái → Approved
+        Asset->>Token: Gọi Mint token (kèm asset_id, owner_did, amount...)
+        Token->>Fabric: Gửi giao dịch mint
+        Fabric-->>Token: Mint thành công
+        Token-->>Asset: Trả về token_id, tx_hash, status
+        Asset->>Fabric: (tuỳ chọn) ghi metadata hash (immutability proof)
+        Asset-->>User: Thông báo tài sản đã tokenized
+    else Từ chối
+        Asset->>Asset: Cập nhật trạng thái → Rejected
+        Asset-->>User: Thông báo từ chối với lý do
+    else Yêu cầu sửa đổi
+        Asset->>Asset: Cập nhật trạng thái → AwaitingFix
+        Asset-->>User: Thông báo yêu cầu sửa đổi
+        User->>Asset: Cập nhật tài sản
+        Asset->>Asset: Cập nhật trạng thái → Submitted
+    end
 ```
 
 ### 2.4 Luồng giao dịch
@@ -238,58 +260,67 @@ sequenceDiagram
 ## 3. Yêu cầu chức năng
 
 ### 3.1 Quản lý tài sản
-* Tạo và cập nhật thông tin tài sản
-* Token hóa tài sản
-* Quản lý quyền sở hữu
-* Theo dõi trạng thái tài sản
+- Tạo và cập nhật thông tin tài sản
+- Token hóa tài sản
+- Quản lý quyền sở hữu
+- Theo dõi trạng thái tài sản
+- Xử lý từ chối và yêu cầu sửa đổi:
+  - Phân quyền cho phép từ chối/yêu cầu sửa đổi
+  - Quản lý lý do từ chối và yêu cầu sửa đổi
+  - Theo dõi số lần từ chối và sửa đổi
+  - Thông báo tự động cho các bên liên quan
+  - Lưu trữ lịch sử thay đổi và phản hồi
 
 ### 3.2 Quản lý token
-* Phát hành token (mint)
-* Hủy token (burn)
-* Chuyển token (transfer)
-* Quản lý số dư
-* Lịch sử giao dịch
+- Phát hành token (mint)
+- Hủy token (burn)
+- Chuyển token (transfer)
+- Quản lý số dư
+- Lịch sử giao dịch
 
 ### 3.3 Quản lý người dùng
-* Đăng ký và xác thực
-* Phân quyền truy cập
-* Quản lý danh tính
-* KYC/AML
+- Đăng ký và xác thực
+- Phân quyền truy cập
+- Quản lý danh tính
+- KYC/AML
 
 ### 3.4 Giao dịch
-* Đặt lệnh mua/bán
-* Khớp lệnh
-* Thực hiện giao dịch
-* Xác nhận giao dịch
+- Đặt lệnh mua/bán
+- Khớp lệnh
+- Thực hiện giao dịch
+- Xác nhận giao dịch
 
 ## 4. Yêu cầu phi chức năng
 
 ### 4.1 Hiệu năng
-* Thời gian phản hồi trung bình mỗi API < 500ms
-* Hệ thống xử lý đồng thời > 1000 yêu cầu/giây cho metadata và luồng nghiệp vụ tài sản
-* Độ trễ cập nhật trạng thái tài sản sau khi gọi Token Service < 2s
+- Thời gian phản hồi trung bình mỗi API < 500ms
+- Hệ thống xử lý đồng thời > 1000 yêu cầu/giây cho metadata và luồng nghiệp vụ tài sản
+- Độ trễ cập nhật trạng thái tài sản sau khi gọi Token Service < 2s
 
 ### 4.2 Bảo mật
-* Mã hóa dữ liệu end-to-end (TLS/mTLS giữa các service)
-* Xác thực đa yếu tố (MFA) cho người dùng quản trị
-* Kiểm soát truy cập theo RBAC/ABAC (dựa trên vai trò và DID)
-* Ghi nhật ký hành vi quan trọng (audit logging) liên quan đến:
-  * Tạo/cập nhật/xóa tài sản
-  * Kích hoạt token hóa
-  * Phê duyệt tài sản
-* Kiểm tra quyền từ AuthZ trước khi thao tác trên tài sản
+- Mã hóa dữ liệu end-to-end (TLS/mTLS giữa các service)
+- Xác thực đa yếu tố (MFA) cho người dùng quản trị
+- Kiểm soát truy cập theo RBAC/ABAC (dựa trên vai trò và DID)
+- Ghi nhật ký hành vi quan trọng (audit logging) liên quan đến:
+  - Tạo/cập nhật/xóa tài sản
+  - Kích hoạt token hóa
+  - Phê duyệt tài sản
+  - Cập nhật metadata tài sản
+  - Thay đổi trạng thái tài sản
+  - Từ chối và yêu cầu sửa đổi tài sản
+- Kiểm tra quyền từ AuthZ trước khi thao tác trên tài sản
 
 ### 4.3 Khả năng mở rộng
-* Có thể mở rộng độc lập Asset Service bằng Kubernetes Horizontal Scaling
-* Load balancing phía API Gateway
-* Tối ưu luồng `event-driven` khi gọi Token Service để giảm coupling
-* Có thể tích hợp message broker (Kafka/NATS) để xử lý async: audit, cập nhật trạng thái tài sản khi token hóa xong
+- Có thể mở rộng độc lập Asset Service bằng Kubernetes Horizontal Scaling
+- Load balancing phía API Gateway
+- Tối ưu luồng `event-driven` khi gọi Token Service để giảm coupling
+- Có thể tích hợp message broker (Kafka/NATS) để xử lý async: audit, cập nhật trạng thái tài sản khi token hóa xong
 
 ### 4.4 Độ tin cậy
-* Hệ thống đảm bảo High Availability (HA)
-* Tự động khôi phục khi gặp lỗi (pod restart, liveness probe)
-* Backup định kỳ metadata tài sản (DB + IPFS/MinIO)
-* Hỗ trợ Disaster Recovery (DR)
+- Hệ thống đảm bảo High Availability (HA)
+- Tự động khôi phục khi gặp lỗi (pod restart, liveness probe)
+- Backup định kỳ metadata tài sản (DB + IPFS/MinIO)
+- Hỗ trợ Disaster Recovery (DR)
 
 ## 5. Interface giữa các Service
 
@@ -344,8 +375,8 @@ message CheckAssetOwnershipResponse {
 ### 5.3 Giao tiếp giữa Asset Service ↔ Token Service
 
 #### 5.3.1 Mục tiêu
-* **Asset Service**: quản lý metadata và trạng thái vòng đời tài sản.
-* **Token Service**: chịu trách nhiệm token hóa, giao dịch token, kiểm tra tuân thủ (compliance).
+- **Asset Service**: quản lý metadata và trạng thái vòng đời tài sản.
+- **Token Service**: chịu trách nhiệm token hóa, giao dịch token, kiểm tra tuân thủ (compliance).
 
 #### 5.3.2 Giao diện gRPC: Token Service
 
@@ -477,201 +508,29 @@ enum ComplianceStatus {
 
 #### 5.3.3 Lưu ý triển khai
 
-* **gRPC Communication**:
-  * Sử dụng gRPC cho tất cả internal service communication
-  * Implement retry mechanism cho các gọi service
-  * Sử dụng circuit breaker pattern
-  * Implement timeout cho mọi request
+- **gRPC Communication**:
+  - Sử dụng gRPC cho tất cả internal service communication
+  - Implement retry mechanism cho các gọi service
+  - Sử dụng circuit breaker pattern
+  - Implement timeout cho mọi request
 
-* **Error Handling**:
-  * Định nghĩa rõ error codes cho từng service
-  * Implement proper error propagation
-  * Log đầy đủ thông tin lỗi
-  * Có cơ chế retry cho các lỗi tạm thời
+- **Error Handling**:
+  - Định nghĩa rõ error codes cho từng service
+  - Implement proper error propagation
+  - Log đầy đủ thông tin lỗi
+  - Có cơ chế retry cho các lỗi tạm thời
 
-* **Security**:
-  * Mã hóa tất cả internal communication
-  * Implement service-to-service authentication
-  * Validate input data
-  * Rate limiting cho mọi endpoint
+- **Security**:
+  - Mã hóa tất cả internal communication
+  - Implement service-to-service authentication
+  - Validate input data
+  - Rate limiting cho mọi endpoint
 
-* **Monitoring**:
-  * Track latency cho mọi service call
-  * Monitor error rates
-  * Alert khi có vấn đề
-  * Log đầy đủ thông tin cho debugging
-
-## 6. Vai trò người dùng và Phân quyền
-
-### 6.1 Định nghĩa vai trò
-
-```protobuf
-enum UserRole {
-    // Vai trò quản trị hệ thống
-    SYSTEM_ADMIN = 0;      // Quản trị viên hệ thống
-    COMPLIANCE_OFFICER = 1; // Nhân viên tuân thủ
-    AUDITOR = 2;           // Kiểm toán viên
-    
-    // Vai trò quản lý tài sản
-    ASSET_OWNER = 10;      // Chủ sở hữu tài sản
-    ASSET_MANAGER = 11;    // Người quản lý tài sản
-    ASSET_OPERATOR = 12;   // Người vận hành tài sản
-    
-    // Vai trò đầu tư
-    INVESTOR = 20;         // Nhà đầu tư
-    INSTITUTIONAL_INVESTOR = 21; // Nhà đầu tư tổ chức
-    RETAIL_INVESTOR = 22;  // Nhà đầu tư cá nhân
-    
-    // Vai trò đối tác
-    BROKER = 30;           // Môi giới
-    CUSTODIAN = 31;        // Người giữ tài sản
-    LEGAL_ADVISOR = 32;    // Cố vấn pháp lý
-}
-```
-
-### 6.2 Quyền hạn theo vai trò
-
-#### 6.2.1 Quản trị hệ thống
-* **SYSTEM_ADMIN**:
-  * Quản lý toàn bộ hệ thống
-  * Cấu hình các tham số hệ thống
-  * Quản lý người dùng và vai trò
-  * Xem toàn bộ logs và metrics
-  * Có quyền cao nhất trong hệ thống
-
-* **COMPLIANCE_OFFICER**:
-  * Xem xét và phê duyệt KYC
-  * Giám sát các giao dịch
-  * Báo cáo tuân thủ
-  * Đánh giá rủi ro
-  * Không có quyền thay đổi cấu hình hệ thống
-
-* **AUDITOR**:
-  * Xem toàn bộ lịch sử giao dịch
-  * Truy xuất logs hệ thống
-  * Tạo báo cáo kiểm toán
-  * Không có quyền thực hiện thay đổi
-
-#### 6.2.2 Quản lý tài sản
-* **ASSET_OWNER**:
-  * Tạo và quản lý tài sản
-  * Phát hành token
-  * Quyết định chính sách phân phối
-  * Xem báo cáo tài sản
-  * Không thể thay đổi cấu hình hệ thống
-
-* **ASSET_MANAGER**:
-  * Quản lý hoạt động tài sản
-  * Thực hiện giao dịch
-  * Tạo báo cáo quản lý
-  * Không thể phát hành token mới
-
-* **ASSET_OPERATOR**:
-  * Thực hiện các hoạt động vận hành
-  * Cập nhật trạng thái tài sản
-  * Không có quyền quản lý tài chính
-
-#### 6.2.3 Nhà đầu tư
-* **INVESTOR** (Base role):
-  * Xem thông tin tài sản
-  * Thực hiện giao dịch
-  * Xem báo cáo đầu tư
-  * Không thể tạo tài sản mới
-
-* **INSTITUTIONAL_INVESTOR**:
-  * Tất cả quyền của INVESTOR
-  * Giao dịch số lượng lớn
-  * Truy cập API riêng
-  * Yêu cầu KYC nâng cao
-
-* **RETAIL_INVESTOR**:
-  * Giao dịch giới hạn
-  * Truy cập thông tin cơ bản
-  * Yêu cầu KYC cơ bản
-
-#### 6.2.4 Đối tác
-* **BROKER**:
-  * Tạo và quản lý đơn hàng
-  * Xem thông tin thị trường
-  * Không thể thực hiện giao dịch trực tiếp
-
-* **CUSTODIAN**:
-  * Quản lý tài sản vật lý
-  * Xác nhận quyền sở hữu
-  * Không có quyền giao dịch
-
-* **LEGAL_ADVISOR**:
-  * Xem tài liệu pháp lý
-  * Tạo báo cáo pháp lý
-  * Không có quyền thực hiện thay đổi
-
-### 6.3 Quy trình phân quyền
-
-```mermaid
-sequenceDiagram
-    participant User
-    participant AuthN
-    participant AuthZ
-    participant DID
-    participant Compliance
-    
-    User->>AuthN: Đăng ký tài khoản
-    AuthN->>DID: Tạo DID
-    DID-->>AuthN: DID Created
-    
-    User->>Compliance: Nộp KYC
-    Compliance->>Compliance: Xác thực KYC
-    Compliance->>AuthZ: Cập nhật role
-    
-    AuthZ->>AuthZ: Áp dụng policy
-    AuthZ-->>User: Role & Permissions
-```
-
-### 6.4 Policy Management
-
-```protobuf
-message RolePolicy {
-    string role = 1;
-    repeated string permissions = 2;
-    map<string, string> constraints = 3;
-    int64 max_transaction_amount = 4;
-    repeated string allowed_asset_types = 5;
-}
-
-message UserPolicy {
-    string user_id = 1;
-    string role = 2;
-    KYCStatus kyc_status = 3;
-    repeated string additional_permissions = 4;
-    map<string, string> custom_constraints = 5;
-}
-```
-
-### 6.5 Lưu ý triển khai
-
-* **Role Hierarchy**:
-  * Implement role inheritance
-  * Hỗ trợ custom roles
-  * Có thể override permissions
-  * Audit log cho mọi thay đổi
-
-* **KYC Integration**:
-  * KYC level ảnh hưởng đến quyền
-  * Tự động cập nhật role sau KYC
-  * Hỗ trợ KYC nâng cao
-  * Lưu trữ KYC history
-
-* **Compliance**:
-  * Kiểm tra tuân thủ theo role
-  * Giới hạn giao dịch theo role
-  * Báo cáo vi phạm
-  * Alert khi có bất thường
-
-* **Monitoring**:
-  * Track role changes
-  * Monitor permission usage
-  * Alert on policy violations
-  * Regular compliance reports
+- **Monitoring**:
+  - Track latency cho mọi service call
+  - Monitor error rates
+  - Alert khi có vấn đề
+  - Log đầy đủ thông tin cho debugging
 
 ## 7. Quy trình nghiệp vụ
 
@@ -713,48 +572,49 @@ sequenceDiagram
 ## 8. Triển khai và Vận hành
 
 ### 8.1 Yêu cầu triển khai
-* Kubernetes cluster
-* Hyperledger Fabric network
-* Database cluster
-* Monitoring system
+- Kubernetes cluster
+- Hyperledger Fabric network
+- Database cluster
+- Monitoring system
 
 ### 8.2 Quy trình vận hành
-* Monitoring và alerting
-* Backup và restore
-* Scaling và load balancing
-* Security patching
+- Monitoring và alerting
+- Backup và restore
+- Scaling và load balancing
+- Security patching
 
 #### 8.2.1 Monitoring với Prometheus + Grafana
 
 ##### 8.2.1.1 Metrics cần theo dõi
 
-* **Service Metrics**:
-  * Request rate (RPS)
-  * Response time (p50, p90, p99)
-  * Error rate
-  * Service uptime
-  * Resource usage (CPU, Memory, Disk)
+- **Service Metrics**:
+  - Request rate (RPS)
+  - Response time (p50, p90, p99)
+  - Error rate
+  - Service uptime
+  - Resource usage (CPU, Memory, Disk)
+  - Audit log volume và retention
 
-* **Token Metrics**:
-  * Token mint rate
-  * Token transfer volume
-  * Token burn rate
-  * Active token holders
-  * Token transaction latency
+- **Token Metrics**:
+  - Token mint rate
+  - Token transfer volume
+  - Token burn rate
+  - Active token holders
+  - Token transaction latency
 
-* **Blockchain Metrics**:
-  * Transaction throughput
-  * Block confirmation time
-  * Network latency
-  * Peer status
-  * Chaincode performance
+- **Blockchain Metrics**:
+  - Transaction throughput
+  - Block confirmation time
+  - Network latency
+  - Peer status
+  - Chaincode performance
 
-* **Business Metrics**:
-  * Daily active users
-  * Transaction volume
-  * Asset tokenization rate
-  * User growth rate
-  * Error distribution
+- **Business Metrics**:
+  - Daily active users
+  - Transaction volume
+  - Asset tokenization rate
+  - User growth rate
+  - Error distribution
 
 ##### 8.2.1.2 Prometheus Configuration
 
@@ -782,29 +642,29 @@ scrape_configs:
 
 ##### 8.2.1.3 Grafana Dashboards
 
-* **Service Overview**:
-  * System health
-  * Resource utilization
-  * Error rates
-  * Response times
+- **Service Overview**:
+  - System health
+  - Resource utilization
+  - Error rates
+  - Response times
 
-* **Token Operations**:
-  * Mint/Transfer/Burn rates
-  * Transaction volume
-  * Token holder statistics
-  * Transaction latency
+- **Token Operations**:
+  - Mint/Transfer/Burn rates
+  - Transaction volume
+  - Token holder statistics
+  - Transaction latency
 
-* **Blockchain Health**:
-  * Network status
-  * Peer health
-  * Transaction throughput
-  * Block metrics
+- **Blockchain Health**:
+  - Network status
+  - Peer health
+  - Transaction throughput
+  - Block metrics
 
-* **Business Analytics**:
-  * User activity
-  * Transaction trends
-  * Asset tokenization
-  * Error analysis
+- **Business Analytics**:
+  - User activity
+  - Transaction trends
+  - Asset tokenization
+  - Error analysis
 
 ##### 8.2.1.4 Alerting Rules
 
@@ -873,34 +733,26 @@ graph TD
 
 ##### 8.2.1.6 Lưu ý triển khai
 
-* **Metrics Collection**:
-  * Sử dụng client libraries cho Prometheus
-  * Implement custom metrics cho business logic
-  * Tối ưu sampling rate
-  * Cấu hình retention policy
+- **Metrics Collection**:
+  - Sử dụng client libraries cho Prometheus
+  - Implement custom metrics cho business logic
+  - Tối ưu sampling rate
+  - Cấu hình retention policy
+  - Đảm bảo audit log được lưu trữ an toàn và không thể sửa đổi
 
-* **Dashboard Design**:
-  * Tạo dashboards theo role
-  * Tối ưu query performance
-  * Implement drill-down views
-  * Tự động refresh
-
-* **Alert Management**:
-  * Phân loại alert theo severity
-  * Cấu hình notification channels
-  * Implement alert grouping
-  * Tự động resolve
-
-* **Performance**:
-  * Scale Prometheus theo data volume
-  * Tối ưu query patterns
-  * Implement data retention
-  * Monitor monitoring system
+- **Audit Log Management**:
+  - Lưu trữ audit log trong hệ thống riêng biệt (Elasticsearch/OpenSearch)
+  - Cấu hình retention policy cho audit log (tối thiểu 7 năm)
+  - Implement log rotation và archival
+  - Mã hóa dữ liệu audit log
+  - Backup định kỳ audit log
+  - Alert khi có thay đổi bất thường về metadata hoặc state
+  - Dashboard theo dõi audit log volume và patterns
 
 ### 8.3 Kế hoạch triển khai
-* Phase 1: Core services
-* Phase 2: Token management
-* Phase 3: Trading features
-* Phase 4: Advanced features
+- Phase 1: Core services
+- Phase 2: Token management
+- Phase 3: Trading features
+- Phase 4: Advanced features
 
 *Cập nhật: 31/05/2025*
