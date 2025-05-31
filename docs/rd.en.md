@@ -141,6 +141,171 @@ sequenceDiagram
   * Audit trail
   * Rate limiting
 
+### 2.4 Detailed Token Service Architecture
+
+```mermaid
+graph TD
+    subgraph "API Layer"
+        REST[REST API]
+        gRPC[gRPC API]
+        WS[WebSocket API]
+    end
+
+    subgraph "Token Service"
+        API[API Gateway]
+        Auth[Auth Handler]
+        Token[Token Handler]
+        State[State Manager]
+        Event[Event Manager]
+    end
+
+    subgraph "Blockchain Layer"
+        Fabric[Fabric Network]
+        SDK[Token SDK]
+        Chaincode[Token Chaincode]
+    end
+
+    subgraph "Storage Layer"
+        DB[(Token DB)]
+        Cache[(Redis Cache)]
+        Storage[(IPFS/MinIO)]
+    end
+
+    REST --> API
+    gRPC --> API
+    WS --> API
+
+    API --> Auth
+    Auth --> Token
+    Token --> State
+    Token --> Event
+
+    State --> Fabric
+    Token --> SDK
+    SDK --> Chaincode
+
+    State --> DB
+    Event --> Cache
+    Token --> Storage
+```
+
+### 2.5 Detailed Interaction Flows
+
+#### 2.5.1 Token Minting Flow
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant API
+    participant Auth
+    participant Token
+    participant State
+    participant Fabric
+    participant Storage
+    
+    Client->>API: Mint Request
+    API->>Auth: Validate Token
+    Auth-->>API: Valid
+    
+    API->>Token: Process Mint
+    Token->>Storage: Store Metadata
+    Storage-->>Token: Metadata URI
+    
+    Token->>State: Prepare Transaction
+    State->>Fabric: Submit Transaction
+    Fabric->>Fabric: Validate & Commit
+    Fabric-->>State: Transaction Result
+    
+    State->>State: Update State
+    State-->>Token: State Updated
+    Token-->>API: Mint Complete
+    API-->>Client: Token Created
+```
+
+#### 2.5.2 Token Transfer Flow
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant API
+    participant Auth
+    participant Token
+    participant State
+    participant Fabric
+    
+    Client->>API: Transfer Request
+    API->>Auth: Validate Token
+    Auth-->>API: Valid
+    
+    API->>Token: Process Transfer
+    Token->>State: Check Balance
+    State-->>Token: Balance Valid
+    
+    Token->>State: Prepare Transaction
+    State->>Fabric: Submit Transaction
+    Fabric->>Fabric: Validate & Commit
+    Fabric-->>State: Transaction Result
+    
+    State->>State: Update State
+    State-->>Token: State Updated
+    Token-->>API: Transfer Complete
+    API-->>Client: Transfer Confirmed
+```
+
+#### 2.5.3 Token Burning Flow
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant API
+    participant Auth
+    participant Token
+    participant State
+    participant Fabric
+    
+    Client->>API: Burn Request
+    API->>Auth: Validate Token
+    Auth-->>API: Valid
+    
+    API->>Token: Process Burn
+    Token->>State: Check Balance
+    State-->>Token: Balance Valid
+    
+    Token->>State: Prepare Transaction
+    State->>Fabric: Submit Transaction
+    Fabric->>Fabric: Validate & Commit
+    Fabric-->>State: Transaction Result
+    
+    State->>State: Update State
+    State-->>Token: State Updated
+    Token-->>API: Burn Complete
+    API-->>Client: Burn Confirmed
+```
+
+### 2.6 Component Details
+
+* **API Layer**:
+  * REST API: Client communication
+  * gRPC API: Internal communication
+  * WebSocket API: Real-time updates
+
+* **Token Service**:
+  * API Gateway: Request handling
+  * Auth Handler: Authentication and authorization
+  * Token Handler: Token processing logic
+  * State Manager: State management
+  * Event Manager: Event processing
+
+* **Blockchain Layer**:
+  * Fabric Network: Blockchain network
+  * Token SDK: Token processing SDK
+  * Token Chaincode: Smart contract
+
+* **Storage Layer**:
+  * Token DB: Metadata storage
+  * Redis Cache: Data caching
+  * IPFS/MinIO: File storage
+
 ## 3. Functional Requirements
 
 ### 3.1 Asset Management

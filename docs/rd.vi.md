@@ -13,13 +13,14 @@
 ## 1. Tổng quan
 
 ### 1.1 Mục tiêu
-Xây dựng một hệ thống quản lý tài sản số tích hợp với blockchain Hyperledger Fabric, hỗ trợ việc token hóa tài sản truyền thống như bất động sản, chứng chỉ tiền gửi, và quỹ đầu tư.
+Xây dựng hệ thống quản lý tài sản số (Digital Asset Service) tích hợp với các dịch vụ xác thực và phân quyền, hỗ trợ việc token hóa và quản lý tài sản truyền thống như bất động sản, chứng chỉ tiền gửi, và quỹ đầu tư.
 
 ### 1.2 Phạm vi
 * Token hóa tài sản vật lý và tài chính
 * Quản lý quyền sở hữu và giao dịch
-* Tích hợp với hệ thống xác thực và phân quyền
-* Hỗ trợ tuân thủ quy định
+* Tích hợp với AuthN Service cho xác thực người dùng
+* Tích hợp với AuthZ Service cho phân quyền truy cập
+* Tích hợp với DID Service cho quản lý danh tính
 
 ### 1.3 Đối tượng người dùng
 * Chủ sở hữu tài sản
@@ -43,6 +44,7 @@ graph TD
         AuthN[AuthN Service]
         AuthZ[AuthZ Service]
         DID[DID Service]
+        Asset[Asset Service]
         Token[Token Service]
         Event[Event Service]
     end
@@ -65,81 +67,124 @@ graph TD
 
     AuthN --> AuthZ
     AuthN --> DID
-    AuthN --> Token
+    AuthN --> Asset
 
+    Asset --> Token
     Token --> Fabric
     DID --> Fabric
     Event --> Fabric
 
+    Asset --> DB
     Token --> DB
-    DID --> DB
     Event --> Cache
-    Token --> Storage
-
-    Fabric --> Chaincode
-    Fabric --> MSP
+    Asset --> Storage
 ```
 
 ### 2.2 Các thành phần chính
-* **AuthN Service**: Xác thực người dùng và quản lý phiên
-* **AuthZ Service**: Phân quyền truy cập
-* **DID Service**: Quản lý danh tính phi tập trung
-* **Token Service**: Quản lý token và giao dịch
-* **Event Service**: Xử lý sự kiện realtime
+* **Asset Service**: 
+  * Quản lý thông tin tài sản
+  * Xử lý token hóa
+  * Quản lý metadata
+  * Tích hợp với DID Service
 
-### 2.2 Luồng xử lý Token
+* **Token Service**:
+  * Quản lý vòng đời token
+  * Xử lý giao dịch token
+  * Tích hợp với Fabric
+  * Quản lý số dư
+
+* **AuthN Service**:
+  * Xác thực người dùng
+  * Quản lý phiên
+  * Cấp phát JWT
+
+* **AuthZ Service**:
+  * Phân quyền truy cập
+  * Quản lý vai trò
+  * Kiểm tra quyền
+
+* **DID Service**:
+  * Quản lý danh tính
+  * Xác thực KYC
+  * Cấp phát MSP Identity
+
+### 2.3 Luồng xử lý tài sản
 
 ```mermaid
 sequenceDiagram
     participant User
-    participant Client
+    participant AuthN
+    participant AuthZ
+    participant DID
+    participant Asset
+    participant Token
+    participant Fabric
+    
+    User->>AuthN: Đăng nhập
+    AuthN-->>User: JWT Token
+    
+    User->>Asset: Yêu cầu token hóa
+    Asset->>AuthN: Validate JWT
+    AuthN-->>Asset: Valid
+    
+    Asset->>AuthZ: Check Permission
+    AuthZ-->>Asset: Permission Granted
+    
+    Asset->>DID: Get DID Info
+    DID-->>Asset: DID & MSP Identity
+    
+    Asset->>Token: Create Token
+    Token->>Fabric: Submit Transaction
+    Fabric->>Fabric: Validate & Commit
+    Fabric-->>Token: Token Created
+    
+    Token-->>Asset: Token Info
+    Asset-->>User: Asset Tokenized
+```
+
+### 2.4 Luồng giao dịch
+
+```mermaid
+sequenceDiagram
+    participant User
     participant AuthN
     participant AuthZ
     participant Token
     participant Fabric
     
-    User->>Client: Yêu cầu tạo token
-    Client->>AuthN: Validate JWT
-    AuthN-->>Client: JWT Valid
+    User->>AuthN: Validate Session
+    AuthN-->>User: Session Valid
     
-    Client->>AuthZ: Check Permission
-    AuthZ-->>Client: Permission Granted
+    User->>Token: Transfer Request
+    Token->>AuthZ: Check Permission
+    AuthZ-->>Token: Permission Granted
     
-    Client->>Token: Mint Token Request
-    Token->>Fabric: Submit Mint Transaction
+    Token->>Fabric: Submit Transaction
     Fabric->>Fabric: Validate & Commit
-    Fabric-->>Token: Mint Result
+    Fabric-->>Token: Transaction Complete
     
-    Token->>Token: Update Token State
-    Token-->>Client: Token Created
-    Client-->>User: Token Info
+    Token-->>User: Transfer Confirmed
 ```
 
-### 2.3 Tích hợp Token Service
+### 2.5 Chi tiết thành phần
+
+* **Asset Service**:
+  * Quản lý thông tin tài sản
+  * Xử lý token hóa
+  * Quản lý metadata
+  * Tích hợp với DID Service
 
 * **Token Service**:
   * Quản lý vòng đời token
   * Xử lý giao dịch token
-  * Tích hợp với Fabric Token SDK
-  * Quản lý metadata token
+  * Tích hợp với Fabric
+  * Quản lý số dư
 
-* **Fabric Integration**:
-  * Sử dụng Fabric Token SDK
-  * Quản lý UTXO
-  * Xử lý giao dịch
-  * Đồng bộ trạng thái
-
-* **Quy trình giao dịch**:
-  * Xác thực người dùng
-  * Kiểm tra quyền
-  * Thực hiện giao dịch
-  * Cập nhật trạng thái
-
-* **Tính năng bảo mật**:
-  * Kiểm tra quyền chi tiết
-  * Xác thực giao dịch
-  * Audit trail
-  * Rate limiting
+* **Event Service**:
+  * Xử lý sự kiện realtime
+  * Thông báo cập nhật
+  * Theo dõi trạng thái
+  * Phân tích dữ liệu
 
 ## 3. Yêu cầu chức năng
 
