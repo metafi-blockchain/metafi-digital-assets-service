@@ -2,14 +2,15 @@
 
 ## 1. Mục tiêu hệ thống
 
-Xây dựng một hệ thống quản lý tài sản số tích hợp với blockchain Hyperledger Fabric, hỗ trợ việc token hóa tài sản truyền thống như bất động sản, chứng chỉ tiền gửi, và quỹ đầu tư. Hệ thống cần đảm bảo xác thực danh tính qua DID, kiểm soát truy cập qua AuthZ, và hỗ trợ giao dịch token thông qua Fabric Token SDK.
+Xây dựng một hệ thống quản lý tài sản số tích hợp với blockchain Hyperledger Fabric, hỗ trợ việc token hóa tài sản truyền thống như bất động sản, chứng chỉ tiền gửi, và quỹ đầu tư. Hệ thống cần đảm bảo xác thực người dùng qua AuthN Service, phân quyền truy cập qua AuthZ Service, và hỗ trợ giao dịch token thông qua Fabric Token SDK.
 
 ---
 
 ## 2. Kiến trúc hệ thống tổng thể
 
+* **AuthN Service**: Cung cấp xác thực người dùng và cấp JWT token cho các phiên làm việc.
+* **AuthZ Service**: Quản lý phân quyền truy cập dựa trên vai trò người dùng (RBAC).
 * **DID Service**: Cung cấp DID (Decentralized Identifiers) và ánh xạ người dùng đến danh tính trong hệ thống (MSP, cert).
-* **AuthZ Service**: Quản lý quyền truy cập dựa trên vai trò người dùng (RBAC).
 * **Token Service**: Thực hiện logic token (mint, transfer, burn, view) thông qua Fabric Token SDK.
 * **Client App**: Giao diện frontend tương tác với người dùng.
 * **Fabric Network**: Ghi nhận các giao dịch token hóa tài sản trên mạng blockchain riêng.
@@ -39,15 +40,17 @@ Xây dựng một hệ thống quản lý tài sản số tích hợp với bloc
 ### 3.2 Tạo và phát hành Token
 
 * Nhận thông tin tài sản từ người dùng/quản trị viên
+* Xác thực người dùng qua AuthN Service và lấy JWT token
+* Kiểm tra quyền mint token qua AuthZ Service
 * Gọi DID để ánh xạ MSP/certificate của chủ sở hữu
-* Xác nhận quyền mint token qua AuthZ
 * Gọi Fabric Token SDK để tạo token (UTXO based)
 * Lưu metadata mô tả tài sản và token tương ứng
 
 ### 3.3 Chuyển nhượng & Giao dịch Token
 
 * Cho phép người dùng chuyển token sang người khác
-* Kiểm tra quyền qua AuthZ
+* Xác thực JWT token qua AuthN Service
+* Kiểm tra quyền qua AuthZ Service
 * Gọi DID → lấy cert người gửi/người nhận
 * Giao dịch sử dụng hàm `Transfer` của Token SDK
 * Hỗ trợ giao dịch P2P và tích hợp marketplace
@@ -56,7 +59,8 @@ Xây dựng một hệ thống quản lý tài sản số tích hợp với bloc
 ### 3.4 Hủy Token
 
 * Cho phép người sở hữu chủ động hủy bỏ token
-* Kiểm tra quyền qua AuthZ
+* Xác thực JWT token qua AuthN Service
+* Kiểm tra quyền qua AuthZ Service
 * Gọi DID → xác thực danh tính và cert
 * Gọi `Burn` SDK để xóa token khỏi mạng
 
@@ -86,13 +90,15 @@ Xây dựng một hệ thống quản lý tài sản số tích hợp với bloc
 
 ### 4.1 Bảo mật
 
-* Xác thực qua JWT và middleware
+* Xác thực qua AuthN Service và JWT token
 * Giao dịch được ký bằng cert từ DID Service (MSP Identity)
 * Kiểm tra quyền chi tiết theo từng hành động qua AuthZ Service
 * Ngăn chặn các tấn công như:
   * Reentrancy
   * Oracle Manipulation
   * Replay attack
+  * JWT token theft
+  * Session hijacking
 
 ### 4.2 Khả năng mở rộng
 
@@ -110,8 +116,9 @@ Xây dựng một hệ thống quản lý tài sản số tích hợp với bloc
 ### 4.4 Khả năng tích hợp
 
 * Tích hợp với:
+  * AuthN Service để xác thực người dùng và quản lý phiên
+  * AuthZ Service để kiểm tra quyền truy cập
   * DID Service để định danh người dùng
-  * AuthN/AuthZ để kiểm tra quyền truy cập
   * Hyperledger Fabric Token SDK (qua Gateway)
   * Chainlink oracle để cập nhật NAV, giá
   * IPFS hoặc MinIO để lưu metadata
@@ -126,7 +133,8 @@ Xây dựng một hệ thống quản lý tài sản số tích hợp với bloc
 | Chuyển Token (transfer)           | Cao        |
 | Hủy Token (burn)                  | Cao        |
 | Truy vấn số dư, lịch sử giao dịch | Trung bình |
-| Tích hợp DID và AuthZ             | Cao        |
+| Tích hợp AuthN và AuthZ           | Cao        |
+| Tích hợp DID                      | Cao        |
 | SIP & tự động hóa lợi tức         | Trung bình |
 | Hệ thống báo cáo                  | Trung bình |
 | Hỗ trợ cross-chain                | Thấp       |
@@ -136,6 +144,7 @@ Xây dựng một hệ thống quản lý tài sản số tích hợp với bloc
 ## 6. Ghi chú triển khai kỹ thuật
 
 * Chaincode sử dụng Fabric Token SDK dạng external
+* AuthN Service và AuthZ Service được viết bằng Go
 * DID Service có thể được viết bằng Go hoặc NestJS tùy môi trường
 * Giao dịch nên thực hiện qua gRPC hoặc HTTP API Gateway
 * Cơ sở dữ liệu lưu thông tin metadata về tài sản token hóa (PostgreSQL hoặc MongoDB tùy quy mô)
