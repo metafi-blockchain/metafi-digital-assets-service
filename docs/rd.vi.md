@@ -270,6 +270,26 @@ sequenceDiagram
     AuthN-->>Client: New JWT Token
 ```
 
+```mermaid
+sequenceDiagram
+    participant Client
+    participant AuthN
+    participant JWK[JWK Service]
+    
+    Client->>AuthN: Request JWK
+    AuthN->>JWK: Get Public Keys
+    JWK-->>AuthN: JWK Set
+    AuthN-->>Client: JWK Set
+    
+    Note over Client,JWK: JWT Validation Flow
+    Client->>Client: Validate JWT
+    Client->>AuthN: Verify Token
+    AuthN->>JWK: Get Key by Kid
+    JWK-->>AuthN: Public Key
+    AuthN->>AuthN: Verify Signature
+    AuthN-->>Client: Validation Result
+```
+
 * **Tích hợp xác thực**:
   * Sử dụng API Gateway hiện tại để xác thực
   * Chuyển đổi session token sang JWT
@@ -281,6 +301,20 @@ sequenceDiagram
   * Hỗ trợ token refresh
   * Xử lý logout đồng bộ
   * Theo dõi trạng thái phiên
+
+* **Quản lý JWT**:
+  * Expose JWK endpoint qua gRPC
+  * Cung cấp public keys cho việc validate JWT
+  * Hỗ trợ key rotation
+  * Cache JWK responses
+  * Implement token validation service
+
+* **Tính năng bảo mật**:
+  * Sử dụng RSA/ECDSA key pairs cho JWT signing
+  * Chính sách key rotation
+  * Hỗ trợ token revocation
+  * Rate limiting cho JWK requests
+  * Secure key storage
 
 ### 7.2 Tích hợp AuthZ Service
 

@@ -279,6 +279,26 @@ sequenceDiagram
     AuthN-->>Client: New JWT Token
 ```
 
+```mermaid
+sequenceDiagram
+    participant Client
+    participant AuthN
+    participant JWK[JWK Service]
+    
+    Client->>AuthN: Request JWK
+    AuthN->>JWK: Get Public Keys
+    JWK-->>AuthN: JWK Set
+    AuthN-->>Client: JWK Set
+    
+    Note over Client,JWK: JWT Validation Flow
+    Client->>Client: Validate JWT
+    Client->>AuthN: Verify Token
+    AuthN->>JWK: Get Key by Kid
+    JWK-->>AuthN: Public Key
+    AuthN->>AuthN: Verify Signature
+    AuthN-->>Client: Validation Result
+```
+
 * **Authentication Integration**:
   * Use existing API Gateway for authentication
   * Convert session tokens to JWT
@@ -290,6 +310,20 @@ sequenceDiagram
   * Support token refresh
   * Handle synchronized logout
   * Track session state
+
+* **JWT Management**:
+  * Expose JWK endpoint via gRPC
+  * Provide public keys for JWT validation
+  * Support key rotation
+  * Cache JWK responses
+  * Implement token validation service
+
+* **Security Features**:
+  * RSA/ECDSA key pairs for JWT signing
+  * Key rotation policies
+  * Token revocation support
+  * Rate limiting for JWK requests
+  * Secure key storage
 
 ### 4.2 AuthZ Service Integration
 
