@@ -1,78 +1,78 @@
-# Technical Design Document - Digital Asset Management System
+# Tài Liệu Thiết Kế Kỹ Thuật - Hệ Thống Quản Lý Tài Sản Số
 
-## 1. System Architecture
+## 1. Kiến Trúc Hệ Thống
 
-### 1.1 High-Level Architecture
+### 1.1 Kiến Trúc Tổng Quan
 
 ```mermaid
 graph TD
-    Client[Client Application] --> Token[Token Service gRPC]
-    Client --> Auth[Auth Service gRPC]
-    Client --> DID[DID Service gRPC]
-    Token --> Fabric[Fabric Network]
+    Client[Ứng Dụng Client] --> Token[Dịch Vụ Token gRPC]
+    Client --> Auth[Dịch Vụ Xác Thực gRPC]
+    Client --> DID[Dịch Vụ DID gRPC]
+    Token --> Fabric[Mạng Fabric]
     DID --> Fabric
     Auth --> Fabric
-    Token --> DB[(Database)]
+    Token --> DB[(Cơ Sở Dữ Liệu)]
     Token --> Storage[(IPFS/MinIO)]
 ```
 
-### 1.2 Component Overview
+### 1.2 Tổng Quan Thành Phần
 
-* **Client Application**
-  * Web-based frontend (React/Next.js)
-  * Mobile application (React Native)
-  * Admin dashboard
-  * gRPC client integration
+* **Ứng Dụng Client**
+  * Frontend web (React/Next.js)
+  * Ứng dụng di động (React Native)
+  * Bảng điều khiển quản trị
+  * Tích hợp client gRPC
 
-* **Token Service**
-  * gRPC server
-  * Token lifecycle management
-  * Transaction processing
-  * Asset metadata handling
-  * Event management
-  * Real-time streaming
+* **Dịch Vụ Token**
+  * Máy chủ gRPC
+  * Quản lý vòng đời token
+  * Xử lý giao dịch
+  * Quản lý metadata tài sản
+  * Quản lý sự kiện
+  * Streaming thời gian thực
 
-* **Auth Service**
-  * gRPC server
-  * JWT token management
-  * Role-based access control (RBAC)
-  * Permission management
-  * Session handling
+* **Dịch Vụ Xác Thực**
+  * Máy chủ gRPC
+  * Quản lý token JWT
+  * Kiểm soát truy cập dựa trên vai trò (RBAC)
+  * Quản lý quyền
+  * Quản lý phiên
 
-* **DID Service**
-  * gRPC server
-  * Identity management
-  * Certificate handling
-  * MSP integration
-  * KYC/AML integration
+* **Dịch Vụ DID**
+  * Máy chủ gRPC
+  * Quản lý danh tính
+  * Quản lý chứng chỉ
+  * Tích hợp MSP
+  * Tích hợp KYC/AML
 
-* **Fabric Network**
-  * Private blockchain network
-  * Smart contracts
-  * Token SDK integration
-  * Event system
+* **Mạng Fabric**
+  * Mạng blockchain riêng
+  * Hợp đồng thông minh
+  * Tích hợp Token SDK
+  * Hệ thống sự kiện
 
 ---
 
-## 2. Technical Stack
+## 2. Stack Công Nghệ
 
-### 2.1 Backend Services
+### 2.1 Dịch Vụ Backend
 
-* **Token Service**
+* **Dịch Vụ Token**
   * Golang
   * gRPC
   * Fabric SDK
   * PostgreSQL
-  * Redis (caching)
+  * Redis (cache)
 
-* **Auth Service**
+* **Dịch Vụ Xác Thực**
   * Golang
   * gRPC
   * JWT
-  * Redis (session storage)
-  * PostgreSQL (user data)
+  * Redis (lưu trữ phiên)
+  * PostgreSQL (dữ liệu người dùng)
 
-* **DID Service**
+* **Dịch Vụ DID**
   * Golang
   * gRPC
   * Fabric SDK
@@ -81,30 +81,30 @@ graph TD
 
 ### 2.2 Frontend
 
-* **Web Application**
+* **Ứng Dụng Web**
   * React/Next.js
   * TypeScript
   * Material-UI/Tailwind CSS
   * gRPC-web client
   * Redux/Context API
 
-* **Mobile Application**
+* **Ứng Dụng Di Động**
   * React Native
   * TypeScript
   * Native Base
   * gRPC client
   * Redux
 
-### 2.3 Infrastructure
+### 2.3 Hạ Tầng
 
-* **Database**
-  * PostgreSQL (main database)
-  * Redis (caching)
-  * MongoDB (optional for analytics)
+* **Cơ Sở Dữ Liệu**
+  * PostgreSQL (cơ sở dữ liệu chính)
+  * Redis (cache)
+  * MongoDB (tùy chọn cho phân tích)
 
-* **Storage**
-  * IPFS/MinIO (metadata storage)
-  * S3-compatible storage
+* **Lưu Trữ**
+  * IPFS/MinIO (lưu trữ metadata)
+  * Lưu trữ tương thích S3
 
 * **Blockchain**
   * Hyperledger Fabric
@@ -113,30 +113,30 @@ graph TD
 
 ---
 
-## 3. Detailed Component Design
+## 3. Thiết Kế Chi Tiết Thành Phần
 
-### 3.1 Token Service
+### 3.1 Dịch Vụ Token
 
-#### 3.1.1 Core Components
+#### 3.1.1 Thành Phần Cốt Lõi
 
 ```go
-// Token Service Interface
+// Giao Diện Dịch Vụ Token
 type TokenService interface {
-    // Token Management
+    // Quản Lý Token
     CreateToken(ctx context.Context, asset *Asset) (*Token, error)
     TransferToken(ctx context.Context, transfer *TransferRequest) (*Transaction, error)
     BurnToken(ctx context.Context, burn *BurnRequest) (*Transaction, error)
     
-    // Query Operations
+    // Thao Tác Truy Vấn
     GetTokenBalance(ctx context.Context, wallet string) (*Balance, error)
     GetTransactionHistory(ctx context.Context, filters *QueryFilters) ([]*Transaction, error)
     
-    // Event Handling
+    // Xử Lý Sự Kiện
     SubscribeToEvents(callback EventCallback) error
     ProcessEvents(event *TokenEvent) error
 }
 
-// Token Service Implementation
+// Triển Khai Dịch Vụ Token
 type tokenServiceImpl struct {
     fabricClient *fabric.Client
     db          *sql.DB
@@ -145,7 +145,7 @@ type tokenServiceImpl struct {
     grpcServer  *grpc.Server
 }
 
-// Asset represents a digital asset
+// Asset đại diện cho tài sản số
 type Asset struct {
     ID          string          `json:"id"`
     OwnerID     string          `json:"owner_id"`
@@ -156,7 +156,7 @@ type Asset struct {
     UpdatedAt   time.Time       `json:"updated_at"`
 }
 
-// Transaction represents a token transaction
+// Transaction đại diện cho giao dịch token
 type Transaction struct {
     ID              string          `json:"id"`
     TokenID         string          `json:"token_id"`
@@ -168,14 +168,14 @@ type Transaction struct {
     CreatedAt       time.Time       `json:"created_at"`
 }
 
-// EventCallback is a function type for handling token events
+// EventCallback là kiểu hàm để xử lý sự kiện token
 type EventCallback func(event *TokenEvent) error
 ```
 
-#### 3.1.2 Database Schema
+#### 3.1.2 Schema Cơ Sở Dữ Liệu
 
 ```sql
--- Tokens Table
+-- Bảng Tokens
 CREATE TABLE tokens (
     id UUID PRIMARY KEY,
     asset_id UUID NOT NULL,
@@ -187,7 +187,7 @@ CREATE TABLE tokens (
     updated_at TIMESTAMP NOT NULL
 );
 
--- Transactions Table
+-- Bảng Transactions
 CREATE TABLE transactions (
     id UUID PRIMARY KEY,
     token_id UUID NOT NULL,
@@ -200,17 +200,17 @@ CREATE TABLE transactions (
 );
 ```
 
-#### 3.1.3 gRPC Service Implementation
+#### 3.1.3 Triển Khai Dịch Vụ gRPC
 
 ```go
-// TokenServiceServer implements the gRPC service
+// TokenServiceServer triển khai dịch vụ gRPC
 type TokenServiceServer struct {
     pb.UnimplementedTokenServiceServer
     service TokenService
     logger  *zap.Logger
 }
 
-// CreateToken implements the CreateToken RPC method
+// CreateToken triển khai phương thức RPC CreateToken
 func (s *TokenServiceServer) CreateToken(ctx context.Context, req *pb.CreateTokenRequest) (*pb.Token, error) {
     asset := &Asset{
         ID:        req.AssetId,
@@ -222,14 +222,14 @@ func (s *TokenServiceServer) CreateToken(ctx context.Context, req *pb.CreateToke
 
     token, err := s.service.CreateToken(ctx, asset)
     if err != nil {
-        s.logger.Error("failed to create token", zap.Error(err))
-        return nil, status.Error(codes.Internal, "failed to create token")
+        s.logger.Error("lỗi khi tạo token", zap.Error(err))
+        return nil, status.Error(codes.Internal, "lỗi khi tạo token")
     }
 
     return convertToProtoToken(token), nil
 }
 
-// TransferToken implements the TransferToken RPC method
+// TransferToken triển khai phương thức RPC TransferToken
 func (s *TokenServiceServer) TransferToken(ctx context.Context, req *pb.TransferRequest) (*pb.Transaction, error) {
     transfer := &TransferRequest{
         TokenID:    req.TokenId,
@@ -240,15 +240,15 @@ func (s *TokenServiceServer) TransferToken(ctx context.Context, req *pb.Transfer
 
     transaction, err := s.service.TransferToken(ctx, transfer)
     if err != nil {
-        s.logger.Error("failed to transfer token", zap.Error(err))
-        return nil, status.Error(codes.Internal, "failed to transfer token")
+        s.logger.Error("lỗi khi chuyển token", zap.Error(err))
+        return nil, status.Error(codes.Internal, "lỗi khi chuyển token")
     }
 
     return convertToProtoTransaction(transaction), nil
 }
 ```
 
-#### 3.1.4 gRPC Service Definition
+#### 3.1.4 Định Nghĩa Dịch Vụ gRPC
 
 ```protobuf
 syntax = "proto3";
@@ -313,18 +313,18 @@ message TokenEvent {
 }
 ```
 
-#### 3.1.5 Configuration
+#### 3.1.5 Cấu Hình
 
 ```go
-// Config represents the configuration for the token service
+// Config đại diện cho cấu hình của dịch vụ token
 type Config struct {
-    // gRPC Server configuration
+    // Cấu hình máy chủ gRPC
     Server struct {
         Port int    `yaml:"port"`
         Host string `yaml:"host"`
     } `yaml:"server"`
 
-    // Database configuration
+    // Cấu hình cơ sở dữ liệu
     Database struct {
         Host     string `yaml:"host"`
         Port     int    `yaml:"port"`
@@ -333,7 +333,7 @@ type Config struct {
         Name     string `yaml:"name"`
     } `yaml:"database"`
 
-    // Redis configuration
+    // Cấu hình Redis
     Redis struct {
         Host     string `yaml:"host"`
         Port     int    `yaml:"port"`
@@ -341,7 +341,7 @@ type Config struct {
         DB       int    `yaml:"db"`
     } `yaml:"redis"`
 
-    // Fabric configuration
+    // Cấu hình Fabric
     Fabric struct {
         ChannelID     string `yaml:"channel_id"`
         ChaincodeName string `yaml:"chaincode_name"`
@@ -352,43 +352,43 @@ type Config struct {
 }
 ```
 
-### 3.2 DID Service
+### 3.2 Dịch Vụ DID
 
-#### 3.2.1 Core Components
+#### 3.2.1 Thành Phần Cốt Lõi
 
 ```go
-// DID Service Interface
+// Giao Diện Dịch Vụ DID
 type DIDService interface {
-    // Identity Management
+    // Quản Lý Danh Tính
     CreateIdentity(ctx context.Context, user *User) (*Identity, error)
     VerifyIdentity(ctx context.Context, identity *Identity) (bool, error)
     
-    // Certificate Management
+    // Quản Lý Chứng Chỉ
     IssueCertificate(ctx context.Context, identity *Identity) (*Certificate, error)
     RevokeCertificate(ctx context.Context, certificate *Certificate) error
     
-    // KYC Integration
+    // Tích Hợp KYC
     PerformKYC(ctx context.Context, user *User) (*KYCResult, error)
     VerifyKYCStatus(ctx context.Context, user *User) (*KYCStatus, error)
 }
 ```
 
-### 3.3 Auth Service
+### 3.3 Dịch Vụ Xác Thực
 
-#### 3.3.1 Core Components
+#### 3.3.1 Thành Phần Cốt Lõi
 
 ```go
-// Auth Service Interface
+// Giao Diện Dịch Vụ Xác Thực
 type AuthService interface {
-    // Authentication
+    // Xác Thực
     Authenticate(ctx context.Context, credentials *Credentials) (*AuthToken, error)
     ValidateToken(ctx context.Context, token string) (bool, error)
     
-    // Authorization
+    // Phân Quyền
     CheckPermission(ctx context.Context, user *User, resource *Resource) (bool, error)
     AssignRole(ctx context.Context, user *User, role *Role) error
     
-    // Session Management
+    // Quản Lý Phiên
     CreateSession(ctx context.Context, user *User) (*Session, error)
     InvalidateSession(ctx context.Context, session *Session) error
 }
@@ -396,95 +396,95 @@ type AuthService interface {
 
 ---
 
-## 4. Security Design
+## 4. Thiết Kế Bảo Mật
 
-### 4.1 Authentication
+### 4.1 Xác Thực
 
-* JWT-based authentication
-* Multi-factor authentication (MFA)
-* Session management
-* Token refresh mechanism
+* Xác thực dựa trên JWT
+* Xác thực đa yếu tố (MFA)
+* Quản lý phiên
+* Cơ chế làm mới token
 
-### 4.2 Authorization
+### 4.2 Phân Quyền
 
-* Role-based access control (RBAC)
-* Resource-level permissions
-* gRPC service protection
-* Rate limiting
+* Kiểm soát truy cập dựa trên vai trò (RBAC)
+* Quyền cấp tài nguyên
+* Bảo vệ dịch vụ gRPC
+* Giới hạn tốc độ
 
-### 4.3 Data Security
+### 4.3 Bảo Mật Dữ Liệu
 
-* Data encryption at rest
-* TLS for data in transit
-* Secure key management
-* Regular security audits
+* Mã hóa dữ liệu khi lưu trữ
+* TLS cho dữ liệu truyền tải
+* Quản lý khóa bảo mật
+* Kiểm tra bảo mật định kỳ
 
-### 4.4 Blockchain Security
+### 4.4 Bảo Mật Blockchain
 
-* MSP-based identity management
-* Transaction signing
-* Smart contract security
-* Network security
+* Quản lý danh tính dựa trên MSP
+* Ký giao dịch
+* Bảo mật hợp đồng thông minh
+* Bảo mật mạng
 
 ---
 
-## 5. Deployment Architecture
+## 5. Kiến Trúc Triển Khai
 
-### 5.1 Infrastructure
+### 5.1 Hạ Tầng
 
 ```mermaid
 graph TD
-    LB[Load Balancer] --> Token1[Token Service 1]
-    LB --> Token2[Token Service 2]
-    LB --> Auth1[Auth Service 1]
-    LB --> Auth2[Auth Service 2]
-    Token1 --> DB1[(Database 1)]
-    Token2 --> DB2[(Database 2)]
+    LB[Bộ Cân Bằng Tải] --> Token1[Dịch Vụ Token 1]
+    LB --> Token2[Dịch Vụ Token 2]
+    LB --> Auth1[Dịch Vụ Xác Thực 1]
+    LB --> Auth2[Dịch Vụ Xác Thực 2]
+    Token1 --> DB1[(Cơ Sở Dữ Liệu 1)]
+    Token2 --> DB2[(Cơ Sở Dữ Liệu 2)]
     Auth1 --> DB1
     Auth2 --> DB2
 ```
 
-### 5.2 Deployment Strategy
+### 5.2 Chiến Lược Triển Khai
 
-* Kubernetes-based deployment
-* Container orchestration
-* Auto-scaling
-* Load balancing
-* High availability
+* Triển khai dựa trên Kubernetes
+* Điều phối container
+* Tự động mở rộng
+* Cân bằng tải
+* Tính sẵn sàng cao
 
-### 5.3 Monitoring
+### 5.3 Giám Sát
 
-* Prometheus metrics
-* Grafana dashboards
-* ELK stack for logging
-* Alert management
+* Số liệu Prometheus
+* Bảng điều khiển Grafana
+* Stack ELK cho ghi log
+* Quản lý cảnh báo
 
 ---
 
-## 6. Development Guidelines
+## 6. Hướng Dẫn Phát Triển
 
-### 6.1 Code Standards
+### 6.1 Tiêu Chuẩn Mã Nguồn
 
 * Go
 * gRPC
 * Protocol Buffers
-* Unit testing
-* Integration testing
+* Kiểm thử đơn vị
+* Kiểm thử tích hợp
 
-### 6.2 Git Workflow
+### 6.2 Quy Trình Git
 
-* Feature branch workflow
-* Pull request reviews
-* CI/CD pipeline
-* Automated testing
-* Code quality checks
+* Quy trình nhánh tính năng
+* Đánh giá pull request
+* Pipeline CI/CD
+* Kiểm thử tự động
+* Kiểm tra chất lượng mã
 
-### 6.3 Documentation
+### 6.3 Tài Liệu
 
-* API documentation
-* Code documentation
-* Architecture documentation
-* Deployment guides
-* User guides
+* Tài liệu API
+* Tài liệu mã nguồn
+* Tài liệu kiến trúc
+* Hướng dẫn triển khai
+* Hướng dẫn người dùng
 
-*Last Updated: 31/05/2025* 
+*Cập nhật: 31/05/2025* 
