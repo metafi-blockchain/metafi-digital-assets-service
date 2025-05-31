@@ -135,31 +135,33 @@ graph TD
 
 ### 2.2 Các thành phần chính
 
-### 2.2.1 Asset Service
+#### 2.2.1 Asset Service
 * Quản lý thông tin và metadata của tài sản (real estate, CD, fund...)
 * Xác thực DID chủ sở hữu tài sản khi tạo và cập nhật
 * Kích hoạt quá trình token hóa bằng cách gọi Token Service khi tài sản được phê duyệt
 * Ghi thông tin tài sản (metadata hash, approval event...) lên Fabric nếu cần đảm bảo tính bất biến
 * Quản lý trạng thái vòng đời tài sản (Draft → Submitted → Approved → Tokenized → Archived)
+* Theo dõi và đồng bộ trạng thái token thông qua event từ Token Service
 
 #### 2.2.2 Token Service
-* Quản lý lifecycle của token tách biệt khỏi metadata tài sản
-* Cung cấp chức năng: mint, burn, transfer, balance, history
-* Tương tác với Hyperledger Fabric thông qua chaincode ERC-20 hoặc Token SDK
-* Có khả năng mở rộng các chức năng như marketplace, staking, hoặc phân phối lợi nhuận
+* Chịu trách nhiệm toàn bộ về vòng đời token (mint, burn, transfer, query balance, transaction history)
+* Tương tác trực tiếp với Hyperledger Fabric thông qua chaincode chuẩn ERC-20 hoặc mô-đun Token SDK
+* Nhận yêu cầu token hóa từ Asset Service và xác nhận lại DID trước khi mint token
+* Ghi log giao dịch và số dư token vào hệ thống lưu trữ riêng (có thể dùng PostgreSQL hoặc MongoDB cho truy vấn nhanh)
+* Hỗ trợ mở rộng: Marketplace (đặt lệnh giao dịch), Staking, Quản lý cổ tức/phân phối lợi nhuận
+* Cung cấp gRPC/REST interface cho các dịch vụ khác (Asset, Wallet, Marketplace) để truy cập dữ liệu token
 
-
-#### 2.2.4 AuthN Service
+#### 2.2.3 AuthN Service
 * Xác thực người dùng
 * Quản lý phiên
 * Cấp phát JWT
 
-#### 2.2.5 AuthZ Service
+#### 2.2.4 AuthZ Service
 * Phân quyền truy cập
 * Quản lý vai trò
 * Kiểm tra quyền
 
-#### 2.2.6 DID Service
+#### 2.2.5 DID Service
 * Quản lý danh tính
 * Xác thực KYC
 * Cấp phát MSP Identity
@@ -263,103 +265,35 @@ sequenceDiagram
 ## 4. Yêu cầu phi chức năng
 
 ### 4.1 Hiệu năng
-* Thời gian phản hồi < 500ms
-* Xử lý đồng thời > 1000 TPS
-* Độ trễ giao dịch < 2s
+* Thời gian phản hồi trung bình mỗi API < 500ms
+* Hệ thống xử lý đồng thời > 1000 yêu cầu/giây cho metadata và luồng nghiệp vụ tài sản
+* Độ trễ cập nhật trạng thái tài sản sau khi gọi Token Service < 2s
 
 ### 4.2 Bảo mật
-* Mã hóa end-to-end
-* Xác thực đa yếu tố
-* Kiểm soát truy cập
-* Audit logging
-
-#### 4.2.1 Audit Logging cho Token Actions
-
-##### 4.2.1.1 Các sự kiện cần audit
-* **Token Mint**:
-  * Thông tin người thực hiện (DID, role)
-  * Thời gian mint
-  * Số lượng token
-  * Asset ID liên quan
-  * Lý do mint
-  * Trạng thái giao dịch
-  * Transaction hash
-
-* **Token Transfer**:
-  * Thông tin người gửi (DID, role)
-  * Thông tin người nhận (DID, role)
-  * Thời gian transfer
-  * Số lượng token
-  * Token ID
-  * Lý do transfer
-  * Trạng thái giao dịch
-  * Transaction hash
-
-##### 4.2.1.2 Cấu trúc Audit Log
-```protobuf
-message TokenAuditLog {
-    string event_id = 1;
-    string event_type = 2;  // MINT, TRANSFER, BURN
-    string actor_did = 3;
-    string actor_role = 4;
-    string target_did = 5;  // For transfer
-    int64 timestamp = 6;
-    string token_id = 7;
-    double amount = 8;
-    string asset_id = 9;
-    string reason = 10;
-    string status = 11;
-    string transaction_hash = 12;
-    map<string, string> metadata = 13;
-}
-```
-
-##### 4.2.1.3 Yêu cầu lưu trữ
-* Lưu trữ immutable trên blockchain
-* Backup định kỳ
-* Retention policy: 7 năm
-* Index cho tìm kiếm nhanh
-* Mã hóa dữ liệu nhạy cảm
-
-##### 4.2.1.4 Quy trình xử lý
-```mermaid
-sequenceDiagram
-    participant Service
-    participant Audit
-    participant Blockchain
-    participant Storage
-    
-    Service->>Audit: Log Event
-    Audit->>Audit: Validate & Format
-    Audit->>Blockchain: Store Hash
-    Audit->>Storage: Store Full Log
-    Audit-->>Service: Confirmation
-```
-
-##### 4.2.1.5 Monitoring và Alerting
-* Alert khi có sự kiện bất thường
-* Báo cáo định kỳ
-* Phát hiện pattern bất thường
-* Theo dõi volume giao dịch
+* Mã hóa dữ liệu end-to-end (TLS/mTLS giữa các service)
+* Xác thực đa yếu tố (MFA) cho người dùng quản trị
+* Kiểm soát truy cập theo RBAC/ABAC (dựa trên vai trò và DID)
+* Ghi nhật ký hành vi quan trọng (audit logging) liên quan đến:
+  * Tạo/cập nhật/xóa tài sản
+  * Kích hoạt token hóa
+  * Phê duyệt tài sản
+* Kiểm tra quyền từ AuthZ trước khi thao tác trên tài sản
 
 ### 4.3 Khả năng mở rộng
-* Horizontal scaling
-* Load balancing
-* Microservices architecture
-* Container orchestration
+* Có thể mở rộng độc lập Asset Service bằng Kubernetes Horizontal Scaling
+* Load balancing phía API Gateway
+* Tối ưu luồng `event-driven` khi gọi Token Service để giảm coupling
+* Có thể tích hợp message broker (Kafka/NATS) để xử lý async: audit, cập nhật trạng thái tài sản khi token hóa xong
 
 ### 4.4 Độ tin cậy
-* High availability
-* Fault tolerance
-* Disaster recovery
-* Data backup
+* Hệ thống đảm bảo High Availability (HA)
+* Tự động khôi phục khi gặp lỗi (pod restart, liveness probe)
+* Backup định kỳ metadata tài sản (DB + IPFS/MinIO)
+* Hỗ trợ Disaster Recovery (DR)
 
 ## 5. Interface giữa các Service
 
 ### 5.1 Asset ↔ AuthN Interface
-
-
-```
 
 ### 5.2 Asset ↔ AuthZ Interface
 
@@ -407,28 +341,24 @@ message CheckAssetOwnershipResponse {
 }
 ```
 
-### 5.3 Asset ↔ Token Interface
+### 5.3 Giao tiếp giữa Asset Service ↔ Token Service
+
+#### 5.3.1 Mục tiêu
+* **Asset Service**: quản lý metadata và trạng thái vòng đời tài sản.
+* **Token Service**: chịu trách nhiệm token hóa, giao dịch token, kiểm tra tuân thủ (compliance).
+
+#### 5.3.2 Giao diện gRPC: Token Service
 
 ```protobuf
-service AssetService {
-    // Existing Operations
-    rpc CreateAsset(CreateAssetRequest) returns (CreateAssetResponse);
-    rpc UpdateAsset(UpdateAssetRequest) returns (UpdateAssetResponse);
-    rpc GetAsset(GetAssetRequest) returns (GetAssetResponse);
-    rpc VerifyOwnership(VerifyOwnershipRequest) returns (VerifyOwnershipResponse);
-    
-    // Token Integration Operations
-    rpc RequestTokenization(RequestTokenizationRequest) returns (RequestTokenizationRequest);
+service TokenService {
+    rpc RequestTokenization(RequestTokenizationRequest) returns (RequestTokenizationResponse);
     rpc GetTokenizationStatus(GetTokenizationStatusRequest) returns (GetTokenizationStatusResponse);
-    rpc UpdateTokenState(UpdateTokenStateRequest) returns (UpdateTokenStateResponse);
     rpc GetTokenInfo(GetTokenInfoRequest) returns (GetTokenInfoResponse);
-    
-    // Compliance Operations
+    rpc UpdateTokenState(UpdateTokenStateRequest) returns (UpdateTokenStateResponse);
     rpc ValidateCompliance(ValidateComplianceRequest) returns (ValidateComplianceResponse);
     rpc UpdateComplianceStatus(UpdateComplianceStatusRequest) returns (UpdateComplianceStatusResponse);
 }
 
-// Token Integration Messages
 message RequestTokenizationRequest {
     string asset_id = 1;
     string owner_did = 2;
@@ -439,9 +369,18 @@ message RequestTokenizationRequest {
 
 message RequestTokenizationResponse {
     string tokenization_id = 1;
-    string status = 2;
+    TokenizationStatus status = 2;
     string message = 3;
     int64 expires_at = 4;
+}
+
+enum TokenizationStatus {
+    INITIATED = 0;
+    VALIDATING = 1;
+    MINTING = 2;
+    SUCCESS = 3;
+    FAILED = 4;
+    REJECTED = 5;
 }
 
 message GetTokenizationStatusRequest {
@@ -450,24 +389,10 @@ message GetTokenizationStatusRequest {
 }
 
 message GetTokenizationStatusResponse {
-    string status = 1;
+    TokenizationStatus status = 1;
     string token_id = 2;
     string message = 3;
     map<string, string> details = 4;
-}
-
-message UpdateTokenStateRequest {
-    string asset_id = 1;
-    string token_id = 2;
-    AssetState new_state = 3;
-    string reason = 4;
-    map<string, string> metadata = 5;
-}
-
-message UpdateTokenStateResponse {
-    string status = 1;
-    string message = 2;
-    string transaction_hash = 3;
 }
 
 message GetTokenInfoRequest {
@@ -485,7 +410,28 @@ message GetTokenInfoResponse {
     map<string, string> metadata = 7;
 }
 
-// Compliance Messages
+message UpdateTokenStateRequest {
+    string asset_id = 1;
+    string token_id = 2;
+    AssetState new_state = 3;
+    string reason = 4;
+    map<string, string> metadata = 5;
+}
+
+message UpdateTokenStateResponse {
+    string status = 1;
+    string message = 2;
+    string transaction_hash = 3;
+}
+
+enum AssetState {
+    ACTIVE = 0;
+    FROZEN = 1;
+    SUSPENDED = 2;
+    REVOKED = 3;
+    COMPLIANCE_HOLD = 4;
+}
+
 message ValidateComplianceRequest {
     string asset_id = 1;
     string token_id = 2;
@@ -514,21 +460,6 @@ message UpdateComplianceStatusResponse {
     int64 updated_at = 3;
 }
 
-// Enums
-enum TokenType {
-    ERC20 = 0;
-    ERC721 = 1;
-    ERC1155 = 2;
-}
-
-enum AssetState {
-    ACTIVE = 0;
-    FROZEN = 1;
-    SUSPENDED = 2;
-    REVOKED = 3;
-    COMPLIANCE_HOLD = 4;
-}
-
 enum ComplianceType {
     KYC = 0;
     AML = 1;
@@ -544,7 +475,7 @@ enum ComplianceStatus {
 }
 ```
 
-### 5.4 Lưu ý triển khai
+#### 5.3.3 Lưu ý triển khai
 
 * **gRPC Communication**:
   * Sử dụng gRPC cho tất cả internal service communication
@@ -745,6 +676,7 @@ message UserPolicy {
 ## 7. Quy trình nghiệp vụ
 
 ### 7.1 Quy trình token hóa tài sản
+
 ```mermaid
 sequenceDiagram
     participant Owner
@@ -761,6 +693,7 @@ sequenceDiagram
 ```
 
 ### 7.2 Quy trình giao dịch
+
 ```mermaid
 sequenceDiagram
     participant Buyer
