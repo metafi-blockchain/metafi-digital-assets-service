@@ -48,9 +48,9 @@ graph LR
         AuthZ[AuthZ Service]
     end
 
-    subgraph "Asset Layer"
+    subgraph "Application Layer"
         Asset[Asset Service]
-        TokenSDK[Token SDK]
+        Token[Token Service]
     end
 
     subgraph "Blockchain Layer"
@@ -63,17 +63,18 @@ graph LR
 
     Gateway --> AuthN
     Gateway --> AuthZ
+    Gateway --> Asset
+
     AuthN --> Asset
     AuthZ --> Asset
 
-    Asset --> TokenSDK
-    TokenSDK --> Fabric
+    Asset --> Token
+    Token --> Fabric
 
     %% Interface Labels
-    Gateway -.->|"Client ↔ Gateway"| AuthN
-    Gateway -.->|"Client ↔ Gateway"| AuthZ
-    Asset -.->|"Asset ↔ TokenSDK"| TokenSDK
-    TokenSDK -.->|"TokenSDK ↔ Fabric"| Fabric
+    Gateway -.->|"Client ↔ Gateway"| Asset
+    Asset -.->|"Asset ↔ Token Service"| Token
+    Token -.->|"Token ↔ Fabric"| Fabric
 ```
 
 #### 2.1.2 Sơ đồ chi tiết
@@ -86,6 +87,10 @@ graph TD
         API[API Client]
     end
 
+    subgraph "Gateway Layer"
+        Gateway[API Gateway]
+    end
+
     subgraph "Service Layer"
         AuthN[AuthN Service]
         AuthZ[AuthZ Service]
@@ -96,18 +101,22 @@ graph TD
 
     subgraph "Blockchain Layer"
         Fabric[Fabric Network]
-        MSP[MSP Identity]
     end
 
     subgraph "Storage Layer"
-        DB[(Database)]
+        AssetDB[(Asset Database)]
+        TokenDB[(Token Database)]
         Cache[(Redis Cache)]
         Storage[(IPFS/MinIO)]
     end
 
-    Web --> Asset
-    Mobile --> Asset
-    API --> Asset
+    Web --> Gateway
+    Mobile --> Gateway
+    API --> Gateway
+
+    Gateway --> AuthN
+    Gateway --> AuthZ
+    Gateway --> Asset
 
     Asset --> AuthN
     Asset --> AuthZ
@@ -117,9 +126,11 @@ graph TD
     Token --> Fabric
     DID --> Fabric
 
-    Asset --> DB
+    Asset --> AssetDB
     Asset --> Cache
     Asset --> Storage
+
+    Token --> TokenDB
 ```
 
 ### 2.2 Các thành phần chính
