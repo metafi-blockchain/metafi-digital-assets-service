@@ -124,12 +124,12 @@ graph TD
 
 ### 2.2 Các thành phần chính
 
-#### 2.2.1 Asset Service
-* Quản lý thông tin tài sản và metadata
-* Xử lý token hóa và quản lý vòng đời token thông qua Token SDK
-* Xử lý giao dịch token trên Fabric Network
-* Tích hợp với Fabric và DID Service
-* Quản lý số dư và trạng thái
+### 2.2.1 Asset Service
+* Quản lý thông tin và metadata của tài sản (real estate, CD, fund...)
+* Xác thực DID chủ sở hữu tài sản khi tạo và cập nhật
+* Kích hoạt quá trình token hóa bằng cách gọi Token Service khi tài sản được phê duyệt
+* Ghi thông tin tài sản (metadata hash, approval event...) lên Fabric nếu cần đảm bảo tính bất biến
+* Quản lý trạng thái vòng đời tài sản (Draft → Submitted → Approved → Tokenized → Archived)
 
 #### 2.2.2 Token Service
 * Quản lý lifecycle của token tách biệt khỏi metadata tài sản
@@ -334,50 +334,7 @@ sequenceDiagram
 
 ### 5.1 Asset ↔ AuthN Interface
 
-```protobuf
-service AuthNService {
-    // Xác thực JWT token
-    rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse);
-    
-    // Lấy thông tin người dùng từ token
-    rpc GetUserInfo(GetUserInfoRequest) returns (GetUserInfoResponse);
-    
-    // Kiểm tra phiên làm việc
-    rpc ValidateSession(ValidateSessionRequest) returns (ValidateSessionResponse);
-}
 
-message ValidateTokenRequest {
-    string jwt_token = 1;
-}
-
-message ValidateTokenResponse {
-    bool is_valid = 1;
-    string user_id = 2;
-    repeated string roles = 3;
-    int64 expires_at = 4;
-}
-
-message GetUserInfoRequest {
-    string user_id = 1;
-}
-
-message GetUserInfoResponse {
-    string user_id = 1;
-    string email = 2;
-    string full_name = 3;
-    repeated string roles = 4;
-    bool is_active = 5;
-}
-
-message ValidateSessionRequest {
-    string session_id = 1;
-}
-
-message ValidateSessionResponse {
-    bool is_valid = 1;
-    string user_id = 2;
-    int64 expires_at = 3;
-}
 ```
 
 ### 5.2 Asset ↔ AuthZ Interface
