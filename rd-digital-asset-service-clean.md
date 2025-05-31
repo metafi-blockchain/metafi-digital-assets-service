@@ -150,7 +150,13 @@ graph TD
 
 #### 2.2.6 DID Service
 * Quản lý danh tính
-* Xác thực KYCsequenceDiagram
+* Xác thực KYC
+* Cấp phát MSP Identity
+
+### 2.3 Luồng xử lý tài sản
+
+```mermaid
+sequenceDiagram
     participant User
     participant AuthN
     participant AuthZ
