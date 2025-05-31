@@ -463,30 +463,334 @@ graph TD
 
 ---
 
-## 6. Hướng Dẫn Phát Triển
+## 6. Giám Sát và Ghi Log
 
-### 6.1 Tiêu Chuẩn Mã Nguồn
+### 6.1 Thu Thập Metrics
 
-* Go
-* gRPC
-* Protocol Buffers
-* Kiểm thử đơn vị
-* Kiểm thử tích hợp
+#### 6.1.1 Prometheus Metrics
 
-### 6.2 Quy Trình Git
+```go
+// Định nghĩa metrics
+type Metrics struct {
+    // Metrics cho operations
+    OperationDuration *prometheus.HistogramVec
+    OperationErrors   *prometheus.CounterVec
+    OperationLatency  *prometheus.HistogramVec
+    
+    // Metrics cho token
+    TokenCreation     *prometheus.CounterVec
+    TokenTransfers    *prometheus.CounterVec
+    TokenBalance      *prometheus.GaugeVec
+    
+    // Metrics cho hệ thống
+    ActiveConnections *prometheus.GaugeVec
+    RequestRate       *prometheus.CounterVec
+    ErrorRate         *prometheus.CounterVec
+    CacheHitRate      *prometheus.GaugeVec
+}
 
-* Quy trình nhánh tính năng
-* Đánh giá pull request
-* Pipeline CI/CD
-* Kiểm thử tự động
-* Kiểm tra chất lượng mã
+// Khởi tạo metrics
+func NewMetrics() *Metrics {
+    return &Metrics{
+        OperationDuration: prometheus.NewHistogramVec(
+            prometheus.HistogramOpts{
+                Name: "operation_duration_seconds",
+                Help: "Thời gian thực hiện operations tính bằng giây",
+                Buckets: prometheus.DefBuckets,
+            },
+            []string{"operation", "service"},
+        ),
+        OperationErrors: prometheus.NewCounterVec(
+            prometheus.CounterOpts{
+                Name: "operation_errors_total",
+                Help: "Tổng số lỗi operations",
+            },
+            []string{"operation", "service", "error_type"},
+        ),
+        TokenCreation: prometheus.NewCounterVec(
+            prometheus.CounterOpts{
+                Name: "token_creation_total",
+                Help: "Tổng số token được tạo",
+            },
+            []string{"token_type", "status"},
+        ),
+        TokenTransfers: prometheus.NewCounterVec(
+            prometheus.CounterOpts{
+                Name: "token_transfers_total",
+                Help: "Tổng số giao dịch chuyển token",
+            },
+            []string{"status"},
+        ),
+        ActiveConnections: prometheus.NewGaugeVec(
+            prometheus.GaugeOpts{
+                Name: "active_connections",
+                Help: "Số lượng kết nối đang hoạt động",
+            },
+            []string{"service"},
+        ),
+    }
+}
+```
 
-### 6.3 Tài Liệu
+#### 6.1.2 Điểm Thu Thập Metrics
 
-* Tài liệu API
-* Tài liệu mã nguồn
-* Tài liệu kiến trúc
-* Hướng dẫn triển khai
-* Hướng dẫn người dùng
+```go
+// Ghi metrics cho operations
+func (s *tokenServiceImpl) recordMetrics(operation string, duration time.Duration, err error) {
+    s.metrics.OperationDuration.WithLabelValues(operation, "token_service").Observe(duration.Seconds())
+    if err != nil {
+        s.metrics.OperationErrors.WithLabelValues(operation, "token_service", getErrorType(err)).Inc()
+    }
+}
+
+// Ghi metrics cho token
+func (s *tokenServiceImpl) recordTokenMetrics(tokenType string, status string) {
+    s.metrics.TokenCreation.WithLabelValues(tokenType, status).Inc()
+}
+
+// Ghi metrics cho chuyển token
+func (s *tokenServiceImpl) recordTransferMetrics(status string) {
+    s.metrics.TokenTransfers.WithLabelValues(status).Inc()
+}
+
+// Ghi metrics cho kết nối
+func (s *tokenServiceImpl) recordConnectionMetrics(active int) {
+    s.metrics.ActiveConnections.WithLabelValues("token_service").Set(float64(active))
+}
+```
+
+### 6.2 Ghi Log
+
+#### 6.2.1 Cấu Hình Logging
+
+```go
+// Cấu hình logging
+type LogConfig struct {
+    Level      string   `yaml:"level"`
+    Format     string   `yaml:"format"`
+    OutputPaths []string `yaml:"output_paths"`
+    ErrorPaths  []string `yaml:"error_paths"`
+    MaxSize    int      `yaml:"max_size"`
+    MaxBackups int      `yaml:"max_backups"`
+    MaxAge     int      `yaml:"max_age"`
+    Compress   bool     `yaml:"compress"`
+}
+
+// Khởi tạo logger
+func setupLogger(config *LogConfig) (*zap.Logger, error) {
+    zapConfig := zap.NewProductionConfig()
+    
+    // Thiết lập log level
+    level, err := zapcore.ParseLevel(config.Level)
+    if err != nil {
+        return nil, fmt.Errorf("log level không hợp lệ: %w", err)
+    }
+    zapConfig.Level = zap.NewAtomicLevelAt(level)
+    
+    // Thiết lập đường dẫn output
+    zapConfig.OutputPaths = config.OutputPaths
+    zapConfig.ErrorOutputPaths = config.ErrorPaths
+    
+    // Cấu hình log rotation
+    zapConfig.EncoderConfig.TimeKey = "timestamp"
+    zapConfig.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+    
+    return zapConfig.Build()
+}
+```
+
+#### 6.2.2 Structured Logging
+
+```go
+// Cấu trúc sự kiện log
+type LogEvent struct {
+    TraceID    string                 `json:"trace_id"`
+    Service    string                 `json:"service"`
+    Operation  string                 `json:"operation"`
+    Level      string                 `json:"level"`
+    Message    string                 `json:"message"`
+    Error      string                 `json:"error,omitempty"`
+    Metadata   map[string]interface{} `json:"metadata,omitempty"`
+    Timestamp  time.Time             `json:"timestamp"`
+}
+
+// Xử lý sự kiện log
+func (s *tokenServiceImpl) logEvent(level zapcore.Level, operation string, message string, err error, metadata map[string]interface{}) {
+    event := &LogEvent{
+        TraceID:    trace.SpanContextFromContext(s.ctx).TraceID().String(),
+        Service:    "token_service",
+        Operation:  operation,
+        Level:      level.String(),
+        Message:    message,
+        Timestamp:  time.Now(),
+        Metadata:   metadata,
+    }
+    
+    if err != nil {
+        event.Error = err.Error()
+    }
+    
+    switch level {
+    case zapcore.InfoLevel:
+        s.logger.Info(message, zap.Any("event", event))
+    case zapcore.ErrorLevel:
+        s.logger.Error(message, zap.Any("event", event))
+    case zapcore.WarnLevel:
+        s.logger.Warn(message, zap.Any("event", event))
+    case zapcore.DebugLevel:
+        s.logger.Debug(message, zap.Any("event", event))
+    }
+}
+```
+
+### 6.3 Bảng Điều Khiển Giám Sát
+
+#### 6.3.1 Cấu Hình Grafana Dashboard
+
+```json
+{
+  "dashboard": {
+    "id": null,
+    "title": "Token Service Dashboard",
+    "tags": ["token-service", "monitoring"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "title": "Thời Gian Thực Hiện Operations",
+        "type": "graph",
+        "datasource": "Prometheus",
+        "targets": [
+          {
+            "expr": "rate(operation_duration_seconds_sum[5m]) / rate(operation_duration_seconds_count[5m])",
+            "legendFormat": "{{operation}}"
+          }
+        ]
+      },
+      {
+        "title": "Tỷ Lệ Lỗi",
+        "type": "graph",
+        "datasource": "Prometheus",
+        "targets": [
+          {
+            "expr": "rate(operation_errors_total[5m])",
+            "legendFormat": "{{operation}} - {{error_type}}"
+          }
+        ]
+      },
+      {
+        "title": "Operations Token",
+        "type": "graph",
+        "datasource": "Prometheus",
+        "targets": [
+          {
+            "expr": "rate(token_creation_total[5m])",
+            "legendFormat": "{{token_type}} - {{status}}"
+          },
+          {
+            "expr": "rate(token_transfers_total[5m])",
+            "legendFormat": "{{status}}"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+#### 6.3.2 Quy Tắc Cảnh Báo
+
+```yaml
+groups:
+- name: token_service_alerts
+  rules:
+  - alert: TỷLệLỗiCao
+    expr: rate(operation_errors_total[5m]) > 0.1
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: Phát hiện tỷ lệ lỗi cao
+      description: Tỷ lệ lỗi trên 10% trong 5 phút gần nhất
+
+  - alert: ĐộTrễCao
+    expr: rate(operation_duration_seconds_sum[5m]) / rate(operation_duration_seconds_count[5m]) > 1
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: Phát hiện độ trễ cao
+      description: Độ trễ operations trên 1 giây trong 5 phút gần nhất
+
+  - alert: DịchVụNgừngHoạtĐộng
+    expr: up{service="token_service"} == 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: Token service đã ngừng hoạt động
+      description: Token service đã ngừng hoạt động hơn 1 phút
+```
+
+### 6.4 Phân Tích Log
+
+#### 6.4.1 Cấu Hình ELK Stack
+
+```yaml
+# Cấu hình Filebeat
+filebeat.inputs:
+- type: log
+  enabled: true
+  paths:
+    - /var/log/token-service/*.log
+  fields:
+    service: token-service
+  json.keys_under_root: true
+  json.add_error_key: true
+
+# Cấu hình Logstash
+input {
+  beats {
+    port => 5044
+  }
+}
+
+filter {
+  json {
+    source => "message"
+  }
+  date {
+    match => [ "timestamp", "ISO8601" ]
+    target => "@timestamp"
+  }
+}
+
+output {
+  elasticsearch {
+    hosts => ["elasticsearch:9200"]
+    index => "token-service-%{+YYYY.MM.dd}"
+  }
+}
+
+# Mẫu chỉ mục Kibana
+{
+  "index_patterns": ["token-service-*"],
+  "settings": {
+    "number_of_shards": 3,
+    "number_of_replicas": 1
+  },
+  "mappings": {
+    "properties": {
+      "trace_id": { "type": "keyword" },
+      "service": { "type": "keyword" },
+      "operation": { "type": "keyword" },
+      "level": { "type": "keyword" },
+      "message": { "type": "text" },
+      "error": { "type": "text" },
+      "metadata": { "type": "object" },
+      "timestamp": { "type": "date" }
+    }
+  }
+}
+```
 
 *Cập nhật: 31/05/2025* 

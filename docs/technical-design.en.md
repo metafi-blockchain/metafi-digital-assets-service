@@ -487,4 +487,334 @@ graph TD
 * Deployment guides
 * User guides
 
+### 6. Monitoring and Logging
+
+#### 6.1 Metrics Collection
+
+##### 6.1.1 Prometheus Metrics
+
+```go
+// Metrics definitions
+type Metrics struct {
+    // Operation metrics
+    OperationDuration *prometheus.HistogramVec
+    OperationErrors   *prometheus.CounterVec
+    OperationLatency  *prometheus.HistogramVec
+    
+    // Token metrics
+    TokenCreation     *prometheus.CounterVec
+    TokenTransfers    *prometheus.CounterVec
+    TokenBalance      *prometheus.GaugeVec
+    
+    // System metrics
+    ActiveConnections *prometheus.GaugeVec
+    RequestRate       *prometheus.CounterVec
+    ErrorRate         *prometheus.CounterVec
+    CacheHitRate      *prometheus.GaugeVec
+}
+
+// Initialize metrics
+func NewMetrics() *Metrics {
+    return &Metrics{
+        OperationDuration: prometheus.NewHistogramVec(
+            prometheus.HistogramOpts{
+                Name: "operation_duration_seconds",
+                Help: "Duration of operations in seconds",
+                Buckets: prometheus.DefBuckets,
+            },
+            []string{"operation", "service"},
+        ),
+        OperationErrors: prometheus.NewCounterVec(
+            prometheus.CounterOpts{
+                Name: "operation_errors_total",
+                Help: "Total number of operation errors",
+            },
+            []string{"operation", "service", "error_type"},
+        ),
+        TokenCreation: prometheus.NewCounterVec(
+            prometheus.CounterOpts{
+                Name: "token_creation_total",
+                Help: "Total number of tokens created",
+            },
+            []string{"token_type", "status"},
+        ),
+        TokenTransfers: prometheus.NewCounterVec(
+            prometheus.CounterOpts{
+                Name: "token_transfers_total",
+                Help: "Total number of token transfers",
+            },
+            []string{"status"},
+        ),
+        ActiveConnections: prometheus.NewGaugeVec(
+            prometheus.GaugeOpts{
+                Name: "active_connections",
+                Help: "Number of active connections",
+            },
+            []string{"service"},
+        ),
+    }
+}
+```
+
+##### 6.1.2 Metrics Collection Points
+
+```go
+// Record operation metrics
+func (s *tokenServiceImpl) recordMetrics(operation string, duration time.Duration, err error) {
+    s.metrics.OperationDuration.WithLabelValues(operation, "token_service").Observe(duration.Seconds())
+    if err != nil {
+        s.metrics.OperationErrors.WithLabelValues(operation, "token_service", getErrorType(err)).Inc()
+    }
+}
+
+// Record token metrics
+func (s *tokenServiceImpl) recordTokenMetrics(tokenType string, status string) {
+    s.metrics.TokenCreation.WithLabelValues(tokenType, status).Inc()
+}
+
+// Record transfer metrics
+func (s *tokenServiceImpl) recordTransferMetrics(status string) {
+    s.metrics.TokenTransfers.WithLabelValues(status).Inc()
+}
+
+// Record connection metrics
+func (s *tokenServiceImpl) recordConnectionMetrics(active int) {
+    s.metrics.ActiveConnections.WithLabelValues("token_service").Set(float64(active))
+}
+```
+
+#### 6.2 Logging
+
+##### 6.2.1 Logging Configuration
+
+```go
+// Logging configuration
+type LogConfig struct {
+    Level      string   `yaml:"level"`
+    Format     string   `yaml:"format"`
+    OutputPaths []string `yaml:"output_paths"`
+    ErrorPaths  []string `yaml:"error_paths"`
+    MaxSize    int      `yaml:"max_size"`
+    MaxBackups int      `yaml:"max_backups"`
+    MaxAge     int      `yaml:"max_age"`
+    Compress   bool     `yaml:"compress"`
+}
+
+// Initialize logger
+func setupLogger(config *LogConfig) (*zap.Logger, error) {
+    zapConfig := zap.NewProductionConfig()
+    
+    // Set log level
+    level, err := zapcore.ParseLevel(config.Level)
+    if err != nil {
+        return nil, fmt.Errorf("invalid log level: %w", err)
+    }
+    zapConfig.Level = zap.NewAtomicLevelAt(level)
+    
+    // Set output paths
+    zapConfig.OutputPaths = config.OutputPaths
+    zapConfig.ErrorOutputPaths = config.ErrorPaths
+    
+    // Configure log rotation
+    zapConfig.EncoderConfig.TimeKey = "timestamp"
+    zapConfig.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+    
+    return zapConfig.Build()
+}
+```
+
+##### 6.2.2 Structured Logging
+
+```go
+// Log event structure
+type LogEvent struct {
+    TraceID    string                 `json:"trace_id"`
+    Service    string                 `json:"service"`
+    Operation  string                 `json:"operation"`
+    Level      string                 `json:"level"`
+    Message    string                 `json:"message"`
+    Error      string                 `json:"error,omitempty"`
+    Metadata   map[string]interface{} `json:"metadata,omitempty"`
+    Timestamp  time.Time             `json:"timestamp"`
+}
+
+// Log event handler
+func (s *tokenServiceImpl) logEvent(level zapcore.Level, operation string, message string, err error, metadata map[string]interface{}) {
+    event := &LogEvent{
+        TraceID:    trace.SpanContextFromContext(s.ctx).TraceID().String(),
+        Service:    "token_service",
+        Operation:  operation,
+        Level:      level.String(),
+        Message:    message,
+        Timestamp:  time.Now(),
+        Metadata:   metadata,
+    }
+    
+    if err != nil {
+        event.Error = err.Error()
+    }
+    
+    switch level {
+    case zapcore.InfoLevel:
+        s.logger.Info(message, zap.Any("event", event))
+    case zapcore.ErrorLevel:
+        s.logger.Error(message, zap.Any("event", event))
+    case zapcore.WarnLevel:
+        s.logger.Warn(message, zap.Any("event", event))
+    case zapcore.DebugLevel:
+        s.logger.Debug(message, zap.Any("event", event))
+    }
+}
+```
+
+#### 6.3 Monitoring Dashboard
+
+##### 6.3.1 Grafana Dashboard Configuration
+
+```json
+{
+  "dashboard": {
+    "id": null,
+    "title": "Token Service Dashboard",
+    "tags": ["token-service", "monitoring"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "title": "Operation Duration",
+        "type": "graph",
+        "datasource": "Prometheus",
+        "targets": [
+          {
+            "expr": "rate(operation_duration_seconds_sum[5m]) / rate(operation_duration_seconds_count[5m])",
+            "legendFormat": "{{operation}}"
+          }
+        ]
+      },
+      {
+        "title": "Error Rate",
+        "type": "graph",
+        "datasource": "Prometheus",
+        "targets": [
+          {
+            "expr": "rate(operation_errors_total[5m])",
+            "legendFormat": "{{operation}} - {{error_type}}"
+          }
+        ]
+      },
+      {
+        "title": "Token Operations",
+        "type": "graph",
+        "datasource": "Prometheus",
+        "targets": [
+          {
+            "expr": "rate(token_creation_total[5m])",
+            "legendFormat": "{{token_type}} - {{status}}"
+          },
+          {
+            "expr": "rate(token_transfers_total[5m])",
+            "legendFormat": "{{status}}"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+##### 6.3.2 Alert Rules
+
+```yaml
+groups:
+- name: token_service_alerts
+  rules:
+  - alert: HighErrorRate
+    expr: rate(operation_errors_total[5m]) > 0.1
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: High error rate detected
+      description: Error rate is above 10% for the last 5 minutes
+
+  - alert: HighLatency
+    expr: rate(operation_duration_seconds_sum[5m]) / rate(operation_duration_seconds_count[5m]) > 1
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: High latency detected
+      description: Operation latency is above 1 second for the last 5 minutes
+
+  - alert: ServiceDown
+    expr: up{service="token_service"} == 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: Token service is down
+      description: Token service has been down for more than 1 minute
+```
+
+#### 6.4 Log Analysis
+
+##### 6.4.1 ELK Stack Configuration
+
+```yaml
+# Filebeat configuration
+filebeat.inputs:
+- type: log
+  enabled: true
+  paths:
+    - /var/log/token-service/*.log
+  fields:
+    service: token-service
+  json.keys_under_root: true
+  json.add_error_key: true
+
+# Logstash configuration
+input {
+  beats {
+    port => 5044
+  }
+}
+
+filter {
+  json {
+    source => "message"
+  }
+  date {
+    match => [ "timestamp", "ISO8601" ]
+    target => "@timestamp"
+  }
+}
+
+output {
+  elasticsearch {
+    hosts => ["elasticsearch:9200"]
+    index => "token-service-%{+YYYY.MM.dd}"
+  }
+}
+
+# Kibana index pattern
+{
+  "index_patterns": ["token-service-*"],
+  "settings": {
+    "number_of_shards": 3,
+    "number_of_replicas": 1
+  },
+  "mappings": {
+    "properties": {
+      "trace_id": { "type": "keyword" },
+      "service": { "type": "keyword" },
+      "operation": { "type": "keyword" },
+      "level": { "type": "keyword" },
+      "message": { "type": "text" },
+      "error": { "type": "text" },
+      "metadata": { "type": "object" },
+      "timestamp": { "type": "date" }
+    }
+  }
+}
+```
+
 *Last Updated: 31/05/2025* 
