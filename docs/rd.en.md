@@ -225,55 +225,7 @@ sequenceDiagram
 
 ## 5. Service Interfaces
 
-### 5.1 DID ↔ AuthN Interface
-
-```protobuf
-service DIDService {
-    // Create DID for new user
-    rpc CreateDID(CreateDIDRequest) returns (CreateDIDResponse);
-    
-    // Get user's DID information
-    rpc GetDID(GetDIDRequest) returns (GetDIDResponse);
-    
-    // Update KYC status
-    rpc UpdateKYCStatus(UpdateKYCRequest) returns (UpdateKYCResponse);
-    
-    // Get MSP Identity for transactions
-    rpc GetMSPIdentity(GetMSPRequest) returns (GetMSPResponse);
-}
-
-message CreateDIDRequest {
-    string user_id = 1;
-    string email = 2;
-    string phone = 3;
-}
-
-message CreateDIDResponse {
-    string did = 1;
-    string msp_id = 2;
-    bytes certificate = 3;
-}
-
-message GetDIDRequest {
-    string user_id = 1;
-}
-
-message GetDIDResponse {
-    string did = 1;
-    string msp_id = 2;
-    KYCStatus kyc_status = 3;
-    bytes certificate = 4;
-}
-
-enum KYCStatus {
-    UNVERIFIED = 0;
-    PENDING = 1;
-    VERIFIED = 2;
-    REJECTED = 3;
-}
-```
-
-### 5.2 DID ↔ Asset Interface
+### 5.1 Asset ↔ DID Interface
 
 ```protobuf
 service AssetService {
@@ -311,7 +263,7 @@ enum AssetType {
 }
 ```
 
-### 5.3 Asset ↔ Token Interface
+### 5.2 Asset ↔ Token Interface
 
 ```protobuf
 service TokenService {
@@ -354,32 +306,7 @@ message TransferTokenResponse {
 }
 ```
 
-### 5.4 Other Interfaces
-
-#### 5.4.1 AuthN ↔ AuthZ Interface
-
-```protobuf
-service AuthZService {
-    // Check access permission
-    rpc CheckPermission(CheckPermissionRequest) returns (CheckPermissionResponse);
-    
-    // Get user's permissions
-    rpc GetUserPermissions(GetUserPermissionsRequest) returns (GetUserPermissionsResponse);
-}
-
-message CheckPermissionRequest {
-    string user_id = 1;
-    string resource = 2;
-    string action = 3;
-}
-
-message CheckPermissionResponse {
-    bool allowed = 1;
-    string reason = 2;
-}
-```
-
-#### 5.4.2 Token ↔ Event Interface
+### 5.3 Asset ↔ Event Interface
 
 ```protobuf
 service EventService {
@@ -400,19 +327,19 @@ message Event {
 }
 ```
 
-### 5.5 Implementation Notes
+### 5.4 Implementation Notes
 
 * **gRPC Communication**:
   * Use gRPC for all internal service communication
-  * Implement retry mechanism
+  * Implement retry mechanism for service calls
   * Use circuit breaker pattern
   * Implement request timeouts
 
 * **Error Handling**:
-  * Define clear error codes
+  * Define clear error codes for each service
   * Implement proper error propagation
   * Log detailed error information
-  * Implement retry mechanism
+  * Implement retry mechanism for temporary errors
 
 * **Security**:
   * Encrypt all internal communication
@@ -421,10 +348,10 @@ message Event {
   * Rate limit all endpoints
 
 * **Monitoring**:
-  * Track service call latency
+  * Track latency for all service calls
   * Monitor error rates
-  * Set up alerts
-  * Log debugging information
+  * Set up alerts for issues
+  * Log detailed debugging information
 
 ## 6. User Roles and Permissions
 

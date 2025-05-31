@@ -156,124 +156,9 @@ sequenceDiagram
     Asset-->>User: Transfer Confirmed
 ```
 
-### 2.5 Chi tiết thành phần
-
-* **Asset Service**:
-  * Quản lý thông tin tài sản và metadata
-  * Xử lý token hóa và quản lý vòng đời token
-  * Xử lý giao dịch token
-  * Tích hợp với Fabric và DID Service
-  * Quản lý số dư và trạng thái
-
-* **Event Service**:
-  * Xử lý sự kiện realtime
-  * Thông báo cập nhật
-  * Theo dõi trạng thái
-  * Phân tích dữ liệu
-
-## 3. Yêu cầu chức năng
-
-### 3.1 Quản lý tài sản
-* Tạo và quản lý tài sản số
-* Token hóa tài sản
-* Quản lý metadata
-* Theo dõi trạng thái
-
-### 3.2 Quản lý giao dịch
-* Tạo và chuyển token
-* Hủy token
-* Theo dõi lịch sử giao dịch
-* Xác nhận giao dịch
-
-### 3.3 Quản lý người dùng
-* Đăng ký và xác thực
-* Quản lý vai trò
-* KYC/AML
-* Quản lý phiên
-
-### 3.4 Báo cáo và giám sát
-* Báo cáo giao dịch
-* Báo cáo tài sản
-* Giám sát hệ thống
-* Audit log
-
-## 4. Yêu cầu phi chức năng
-
-### 4.1 Hiệu năng
-* Thời gian phản hồi < 2s
-* Hỗ trợ 1000+ giao dịch/giây
-* Khả năng mở rộng theo chiều ngang
-* Tối ưu hóa tài nguyên
-
-### 4.2 Bảo mật
-* Mã hóa dữ liệu
-* Xác thực đa yếu tố
-* Phân quyền chi tiết
-* Audit trail
-
-### 4.3 Khả dụng
-* Uptime 99.9%
-* Khôi phục tự động
-* Backup định kỳ
-* Monitoring realtime
-
-### 4.4 Tuân thủ
-* KYC/AML
-* Báo cáo giao dịch
-* Lưu trữ dữ liệu
-* Audit log
-
 ## 5. Interface giữa các Service
 
-### 5.1 DID ↔ AuthN Interface
-
-```protobuf
-service DIDService {
-    // Tạo DID cho user mới
-    rpc CreateDID(CreateDIDRequest) returns (CreateDIDResponse);
-    
-    // Lấy thông tin DID của user
-    rpc GetDID(GetDIDRequest) returns (GetDIDResponse);
-    
-    // Cập nhật trạng thái KYC
-    rpc UpdateKYCStatus(UpdateKYCRequest) returns (UpdateKYCResponse);
-    
-    // Lấy MSP Identity cho giao dịch
-    rpc GetMSPIdentity(GetMSPRequest) returns (GetMSPResponse);
-}
-
-message CreateDIDRequest {
-    string user_id = 1;
-    string email = 2;
-    string phone = 3;
-}
-
-message CreateDIDResponse {
-    string did = 1;
-    string msp_id = 2;
-    bytes certificate = 3;
-}
-
-message GetDIDRequest {
-    string user_id = 1;
-}
-
-message GetDIDResponse {
-    string did = 1;
-    string msp_id = 2;
-    KYCStatus kyc_status = 3;
-    bytes certificate = 4;
-}
-
-enum KYCStatus {
-    UNVERIFIED = 0;
-    PENDING = 1;
-    VERIFIED = 2;
-    REJECTED = 3;
-}
-```
-
-### 5.2 DID ↔ Asset Interface
+### 5.1 Asset ↔ DID Interface
 
 ```protobuf
 service AssetService {
@@ -311,7 +196,7 @@ enum AssetType {
 }
 ```
 
-### 5.3 Asset ↔ Token Interface
+### 5.2 Asset ↔ Token Interface
 
 ```protobuf
 service TokenService {
@@ -354,32 +239,7 @@ message TransferTokenResponse {
 }
 ```
 
-### 5.4 Các Interface khác
-
-#### 5.4.1 AuthN ↔ AuthZ Interface
-
-```protobuf
-service AuthZService {
-    // Kiểm tra quyền truy cập
-    rpc CheckPermission(CheckPermissionRequest) returns (CheckPermissionResponse);
-    
-    // Lấy danh sách quyền của user
-    rpc GetUserPermissions(GetUserPermissionsRequest) returns (GetUserPermissionsResponse);
-}
-
-message CheckPermissionRequest {
-    string user_id = 1;
-    string resource = 2;
-    string action = 3;
-}
-
-message CheckPermissionResponse {
-    bool allowed = 1;
-    string reason = 2;
-}
-```
-
-#### 5.4.2 Token ↔ Event Interface
+### 5.3 Asset ↔ Event Interface
 
 ```protobuf
 service EventService {
@@ -400,7 +260,7 @@ message Event {
 }
 ```
 
-### 5.5 Lưu ý triển khai
+### 5.4 Lưu ý triển khai
 
 * **gRPC Communication**:
   * Sử dụng gRPC cho tất cả internal service communication
@@ -426,7 +286,7 @@ message Event {
   * Alert khi có vấn đề
   * Log đầy đủ thông tin cho debugging
 
-*Cập nhật: 31/05/2025* 
+*Cập nhật: 31/05/2025*
 
 ## 6. Vai trò người dùng và Phân quyền
 
