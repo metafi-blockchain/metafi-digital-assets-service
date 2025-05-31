@@ -150,13 +150,7 @@ graph TD
 
 #### 2.2.6 DID Service
 * Quản lý danh tính
-* Xác thực KYC
-* Cấp phát MSP Identity
-
-### 2.3 Luồng xử lý tài sản
-
-```mermaid
-sequenceDiagram
+* Xác thực KYCsequenceDiagram
     participant User
     participant AuthN
     participant AuthZ
@@ -168,22 +162,32 @@ sequenceDiagram
     User->>AuthN: Đăng nhập
     AuthN-->>User: JWT Token
 
-    User->>Asset: Yêu cầu token hóa
+    User->>Asset: Gửi yêu cầu tạo tài sản (metadata, loại tài sản)
     Asset->>AuthN: Validate JWT
-    AuthN-->>Asset: Valid
+    AuthN-->>Asset: OK
 
-    Asset->>AuthZ: Check Permission
-    AuthZ-->>Asset: Permission Granted
+    Asset->>DID: Xác thực DID chủ sở hữu
+    DID-->>Asset: DID hợp lệ + MSP Identity
 
-    Asset->>DID: Lấy thông tin DID & MSP
-    DID-->>Asset: DID & MSP Identity
+    Asset->>AuthZ: Kiểm tra quyền tạo tài sản
+    AuthZ-->>Asset: Được phép
 
-    Asset->>Token: Gửi yêu cầu tạo token (Mint)
-    Token->>Fabric: Gửi giao dịch mint token
-    Fabric-->>Token: Token đã được tạo
+    Asset->>Asset: Lưu metadata vào DB (trạng thái: Draft)
 
-    Token-->>Asset: Thông báo thành công
-    Asset-->>User: Tài sản đã được token hóa
+    User->>Asset: Submit tài sản để phê duyệt
+    Asset->>AuthZ: Kiểm tra quyền phê duyệt
+    AuthZ-->>Asset: OK
+
+    Asset->>Asset: Cập nhật trạng thái → Approved
+
+    Asset->>Token: Gọi Mint token (kèm asset_id, owner_did, amount...)
+    Token->>Fabric: Gửi giao dịch mint
+    Fabric-->>Token: Mint thành công
+
+    Token-->>Asset: Trả về token_id, tx_hash, status
+    Asset->>Fabric: (tuỳ chọn) ghi metadata hash (immutability proof)
+
+    Asset-->>User: Thông báo tài sản đã tokenized
 ```
 
 ### 2.4 Luồng giao dịch
