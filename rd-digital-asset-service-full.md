@@ -3,6 +3,7 @@
 ## Mục lục
 1. [Tổng quan](#1-tổng-quan)
 2. [Kiến trúc hệ thống](#2-kiến-trúc-hệ-thống)
+3. [Token Service](#25-token-service)
 3. [Yêu cầu chức năng](#3-yêu-cầu-chức-năng)
 4. [Yêu cầu phi chức năng](#4-yêu-cầu-phi-chức-năng)
 5. [Interface giữa các Service](#5-interface-giữa-các-service)
@@ -135,6 +136,13 @@ graph TD
   * Xử lý giao dịch token trên Fabric Network
   * Tích hợp với Fabric và DID Service
   * Quản lý số dư và trạng thái
+
+
+* **Token Service**: 
+  * Quản lý lifecycle của token tách biệt khỏi metadata tài sản
+  * Cung cấp chức năng: mint, burn, transfer, balance, history
+  * Tương tác với Hyperledger Fabric thông qua chaincode ERC-20 hoặc Token SDK
+  * Có khả năng mở rộng các chức năng như marketplace, staking, hoặc phân phối lợi nhuận
 
 * **Token SDK/Chaincode**:
   * Cung cấp các hàm cơ bản cho token (mint, transfer, burn)
