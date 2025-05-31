@@ -13,13 +13,14 @@
 ## 1. Overview
 
 ### 1.1 Objectives
-Build a digital asset management system integrated with Hyperledger Fabric blockchain, supporting the tokenization of traditional assets such as real estate, certificates of deposit, and investment funds.
+Build a Digital Asset Service integrated with authentication and authorization services, supporting the tokenization and management of traditional assets such as real estate, certificates of deposit, and investment funds.
 
 ### 1.2 Scope
 * Tokenization of physical and financial assets
 * Ownership and transaction management
-* Integration with authentication and authorization systems
-* Regulatory compliance support
+* Integration with AuthN Service for user authentication
+* Integration with AuthZ Service for access control
+* Integration with DID Service for identity management
 
 ### 1.3 Target Users
 * Asset owners
@@ -43,7 +44,7 @@ graph TD
         AuthN[AuthN Service]
         AuthZ[AuthZ Service]
         DID[DID Service]
-        Token[Token Service]
+        Asset[Asset Service]
         Event[Event Service]
     end
 
@@ -65,246 +66,110 @@ graph TD
 
     AuthN --> AuthZ
     AuthN --> DID
-    AuthN --> Token
+    AuthN --> Asset
 
-    Token --> Fabric
+    Asset --> Fabric
     DID --> Fabric
     Event --> Fabric
 
-    Token --> DB
-    DID --> DB
+    Asset --> DB
     Event --> Cache
-    Token --> Storage
-
-    Fabric --> Chaincode
-    Fabric --> MSP
+    Asset --> Storage
 ```
 
 ### 2.2 Core Components
-* **AuthN Service**: User authentication and session management
-* **AuthZ Service**: Access control and authorization
-* **DID Service**: Decentralized identity management
-* **Token Service**: Token and transaction management
-* **Event Service**: Real-time event processing
+* **Asset Service**: 
+  * Asset information and metadata management
+  * Tokenization and token lifecycle management
+  * Token transaction processing
+  * Fabric and DID Service integration
+  * Balance and state management
 
-### 2.2 Token Processing Flow
+* **AuthN Service**:
+  * User authentication
+  * Session management
+  * JWT issuance
+
+* **AuthZ Service**:
+  * Access control
+  * Role management
+  * Permission checking
+
+* **DID Service**:
+  * Identity management
+  * KYC verification
+  * MSP Identity issuance
+
+### 2.3 Asset Processing Flow
 
 ```mermaid
 sequenceDiagram
     participant User
-    participant Client
     participant AuthN
     participant AuthZ
-    participant Token
+    participant DID
+    participant Asset
     participant Fabric
     
-    User->>Client: Token creation request
-    Client->>AuthN: Validate JWT
-    AuthN-->>Client: JWT Valid
+    User->>AuthN: Login
+    AuthN-->>User: JWT Token
     
-    Client->>AuthZ: Check Permission
-    AuthZ-->>Client: Permission Granted
+    User->>Asset: Tokenization Request
+    Asset->>AuthN: Validate JWT
+    AuthN-->>Asset: Valid
     
-    Client->>Token: Mint Token Request
-    Token->>Fabric: Submit Mint Transaction
+    Asset->>AuthZ: Check Permission
+    AuthZ-->>Asset: Permission Granted
+    
+    Asset->>DID: Get DID Info
+    DID-->>Asset: DID & MSP Identity
+    
+    Asset->>Asset: Create Token
+    Asset->>Fabric: Submit Transaction
     Fabric->>Fabric: Validate & Commit
-    Fabric-->>Token: Mint Result
+    Fabric-->>Asset: Token Created
     
-    Token->>Token: Update Token State
-    Token-->>Client: Token Created
-    Client-->>User: Token Info
+    Asset-->>User: Asset Tokenized
 ```
 
-### 2.3 Token Service Integration
+### 2.4 Transaction Flow
 
-* **Token Service**:
-  * Token lifecycle management
+```mermaid
+sequenceDiagram
+    participant User
+    participant AuthN
+    participant AuthZ
+    participant Asset
+    participant Fabric
+    
+    User->>AuthN: Validate Session
+    AuthN-->>User: Session Valid
+    
+    User->>Asset: Transfer Request
+    Asset->>AuthZ: Check Permission
+    AuthZ-->>Asset: Permission Granted
+    
+    Asset->>Fabric: Submit Transaction
+    Fabric->>Fabric: Validate & Commit
+    Fabric-->>Asset: Transaction Complete
+    
+    Asset-->>User: Transfer Confirmed
+```
+
+### 2.5 Component Details
+
+* **Asset Service**:
+  * Asset information and metadata management
+  * Tokenization and token lifecycle management
   * Token transaction processing
-  * Fabric Token SDK integration
-  * Token metadata management
+  * Fabric and DID Service integration
+  * Balance and state management
 
-* **Fabric Integration**:
-  * Use Fabric Token SDK
-  * UTXO management
-  * Transaction processing
-  * State synchronization
-
-* **Transaction Process**:
-  * User authentication
-  * Permission checking
-  * Transaction execution
-  * State updates
-
-* **Security Features**:
-  * Detailed permission checks
-  * Transaction validation
-  * Audit trail
-  * Rate limiting
-
-### 2.4 Detailed Token Service Architecture
-
-```mermaid
-graph TD
-    subgraph "API Layer"
-        REST[REST API]
-        gRPC[gRPC API]
-        WS[WebSocket API]
-    end
-
-    subgraph "Token Service"
-        API[API Gateway]
-        Auth[Auth Handler]
-        Token[Token Handler]
-        State[State Manager]
-        Event[Event Manager]
-    end
-
-    subgraph "Blockchain Layer"
-        Fabric[Fabric Network]
-        SDK[Token SDK]
-        Chaincode[Token Chaincode]
-    end
-
-    subgraph "Storage Layer"
-        DB[(Token DB)]
-        Cache[(Redis Cache)]
-        Storage[(IPFS/MinIO)]
-    end
-
-    REST --> API
-    gRPC --> API
-    WS --> API
-
-    API --> Auth
-    Auth --> Token
-    Token --> State
-    Token --> Event
-
-    State --> Fabric
-    Token --> SDK
-    SDK --> Chaincode
-
-    State --> DB
-    Event --> Cache
-    Token --> Storage
-```
-
-### 2.5 Detailed Interaction Flows
-
-#### 2.5.1 Token Minting Flow
-
-```mermaid
-sequenceDiagram
-    participant Client
-    participant API
-    participant Auth
-    participant Token
-    participant State
-    participant Fabric
-    participant Storage
-    
-    Client->>API: Mint Request
-    API->>Auth: Validate Token
-    Auth-->>API: Valid
-    
-    API->>Token: Process Mint
-    Token->>Storage: Store Metadata
-    Storage-->>Token: Metadata URI
-    
-    Token->>State: Prepare Transaction
-    State->>Fabric: Submit Transaction
-    Fabric->>Fabric: Validate & Commit
-    Fabric-->>State: Transaction Result
-    
-    State->>State: Update State
-    State-->>Token: State Updated
-    Token-->>API: Mint Complete
-    API-->>Client: Token Created
-```
-
-#### 2.5.2 Token Transfer Flow
-
-```mermaid
-sequenceDiagram
-    participant Client
-    participant API
-    participant Auth
-    participant Token
-    participant State
-    participant Fabric
-    
-    Client->>API: Transfer Request
-    API->>Auth: Validate Token
-    Auth-->>API: Valid
-    
-    API->>Token: Process Transfer
-    Token->>State: Check Balance
-    State-->>Token: Balance Valid
-    
-    Token->>State: Prepare Transaction
-    State->>Fabric: Submit Transaction
-    Fabric->>Fabric: Validate & Commit
-    Fabric-->>State: Transaction Result
-    
-    State->>State: Update State
-    State-->>Token: State Updated
-    Token-->>API: Transfer Complete
-    API-->>Client: Transfer Confirmed
-```
-
-#### 2.5.3 Token Burning Flow
-
-```mermaid
-sequenceDiagram
-    participant Client
-    participant API
-    participant Auth
-    participant Token
-    participant State
-    participant Fabric
-    
-    Client->>API: Burn Request
-    API->>Auth: Validate Token
-    Auth-->>API: Valid
-    
-    API->>Token: Process Burn
-    Token->>State: Check Balance
-    State-->>Token: Balance Valid
-    
-    Token->>State: Prepare Transaction
-    State->>Fabric: Submit Transaction
-    Fabric->>Fabric: Validate & Commit
-    Fabric-->>State: Transaction Result
-    
-    State->>State: Update State
-    State-->>Token: State Updated
-    Token-->>API: Burn Complete
-    API-->>Client: Burn Confirmed
-```
-
-### 2.6 Component Details
-
-* **API Layer**:
-  * REST API: Client communication
-  * gRPC API: Internal communication
-  * WebSocket API: Real-time updates
-
-* **Token Service**:
-  * API Gateway: Request handling
-  * Auth Handler: Authentication and authorization
-  * Token Handler: Token processing logic
-  * State Manager: State management
-  * Event Manager: Event processing
-
-* **Blockchain Layer**:
-  * Fabric Network: Blockchain network
-  * Token SDK: Token processing SDK
-  * Token Chaincode: Smart contract
-
-* **Storage Layer**:
-  * Token DB: Metadata storage
-  * Redis Cache: Data caching
-  * IPFS/MinIO: File storage
+* **Event Service**:
+  * Real-time event processing
+  * Update notifications
+  * Status monitoring
+  * Data analytics
 
 ## 3. Functional Requirements
 

@@ -45,7 +45,6 @@ graph TD
         AuthZ[AuthZ Service]
         DID[DID Service]
         Asset[Asset Service]
-        Token[Token Service]
         Event[Event Service]
     end
 
@@ -69,29 +68,22 @@ graph TD
     AuthN --> DID
     AuthN --> Asset
 
-    Asset --> Token
-    Token --> Fabric
+    Asset --> Fabric
     DID --> Fabric
     Event --> Fabric
 
     Asset --> DB
-    Token --> DB
     Event --> Cache
     Asset --> Storage
 ```
 
 ### 2.2 Các thành phần chính
 * **Asset Service**: 
-  * Quản lý thông tin tài sản
-  * Xử lý token hóa
-  * Quản lý metadata
-  * Tích hợp với DID Service
-
-* **Token Service**:
-  * Quản lý vòng đời token
+  * Quản lý thông tin tài sản và metadata
+  * Xử lý token hóa và quản lý vòng đời token
   * Xử lý giao dịch token
-  * Tích hợp với Fabric
-  * Quản lý số dư
+  * Tích hợp với Fabric và DID Service
+  * Quản lý số dư và trạng thái
 
 * **AuthN Service**:
   * Xác thực người dùng
@@ -117,7 +109,6 @@ sequenceDiagram
     participant AuthZ
     participant DID
     participant Asset
-    participant Token
     participant Fabric
     
     User->>AuthN: Đăng nhập
@@ -133,12 +124,11 @@ sequenceDiagram
     Asset->>DID: Get DID Info
     DID-->>Asset: DID & MSP Identity
     
-    Asset->>Token: Create Token
-    Token->>Fabric: Submit Transaction
+    Asset->>Asset: Create Token
+    Asset->>Fabric: Submit Transaction
     Fabric->>Fabric: Validate & Commit
-    Fabric-->>Token: Token Created
+    Fabric-->>Asset: Token Created
     
-    Token-->>Asset: Token Info
     Asset-->>User: Asset Tokenized
 ```
 
@@ -149,36 +139,31 @@ sequenceDiagram
     participant User
     participant AuthN
     participant AuthZ
-    participant Token
+    participant Asset
     participant Fabric
     
     User->>AuthN: Validate Session
     AuthN-->>User: Session Valid
     
-    User->>Token: Transfer Request
-    Token->>AuthZ: Check Permission
-    AuthZ-->>Token: Permission Granted
+    User->>Asset: Transfer Request
+    Asset->>AuthZ: Check Permission
+    AuthZ-->>Asset: Permission Granted
     
-    Token->>Fabric: Submit Transaction
+    Asset->>Fabric: Submit Transaction
     Fabric->>Fabric: Validate & Commit
-    Fabric-->>Token: Transaction Complete
+    Fabric-->>Asset: Transaction Complete
     
-    Token-->>User: Transfer Confirmed
+    Asset-->>User: Transfer Confirmed
 ```
 
 ### 2.5 Chi tiết thành phần
 
 * **Asset Service**:
-  * Quản lý thông tin tài sản
-  * Xử lý token hóa
-  * Quản lý metadata
-  * Tích hợp với DID Service
-
-* **Token Service**:
-  * Quản lý vòng đời token
+  * Quản lý thông tin tài sản và metadata
+  * Xử lý token hóa và quản lý vòng đời token
   * Xử lý giao dịch token
-  * Tích hợp với Fabric
-  * Quản lý số dư
+  * Tích hợp với Fabric và DID Service
+  * Quản lý số dư và trạng thái
 
 * **Event Service**:
   * Xử lý sự kiện realtime
