@@ -45,12 +45,11 @@ graph TD
         AuthZ[AuthZ Service]
         DID[DID Service]
         Asset[Asset Service]
-        Event[Event Service]
     end
 
     subgraph "Blockchain Layer"
         Fabric[Fabric Network]
-        Chaincode[Token Chaincode]
+        TokenSDK[Token SDK/Chaincode]
         MSP[MSP Identity]
     end
 
@@ -60,30 +59,42 @@ graph TD
         Storage[(IPFS/MinIO)]
     end
 
-    Web --> AuthN
-    Mobile --> AuthN
-    API --> AuthN
+    Web --> Asset
+    Mobile --> Asset
+    API --> Asset
 
-    AuthN --> AuthZ
-    AuthN --> DID
-    AuthN --> Asset
+    Asset --> AuthN
+    Asset --> AuthZ
+    Asset --> DID
 
-    Asset --> Fabric
+    Asset --> TokenSDK
+    TokenSDK --> Fabric
     DID --> Fabric
-    Event --> Fabric
 
     Asset --> DB
-    Event --> Cache
+    Asset --> Cache
     Asset --> Storage
+
+    %% Interface Labels
+    Asset -.->|"Asset ↔ AuthN"| AuthN
+    Asset -.->|"Asset ↔ AuthZ"| AuthZ
+    Asset -.->|"Asset ↔ DID"| DID
+    Asset -.->|"Asset ↔ TokenSDK"| TokenSDK
 ```
 
 ### 2.2 Core Components
 * **Asset Service**: 
   * Asset information and metadata management
-  * Tokenization and token lifecycle management
-  * Token transaction processing
+  * Tokenization and token lifecycle management through Token SDK
+  * Token transaction processing on Fabric Network
   * Fabric and DID Service integration
   * Balance and state management
+
+* **Token SDK/Chaincode**:
+  * Provides basic token functions (mint, transfer, burn)
+  * Manages token state on blockchain
+  * Validates token transactions
+  * Integrates with Fabric Network
 
 * **AuthN Service**:
   * User authentication
@@ -109,6 +120,7 @@ sequenceDiagram
     participant AuthZ
     participant DID
     participant Asset
+    participant TokenSDK
     participant Fabric
     
     User->>AuthN: Login
@@ -124,10 +136,11 @@ sequenceDiagram
     Asset->>DID: Get DID Info
     DID-->>Asset: DID & MSP Identity
     
-    Asset->>Asset: Create Token
-    Asset->>Fabric: Submit Transaction
+    Asset->>TokenSDK: Create Token
+    TokenSDK->>Fabric: Submit Transaction
     Fabric->>Fabric: Validate & Commit
-    Fabric-->>Asset: Token Created
+    Fabric-->>TokenSDK: Token Created
+    TokenSDK-->>Asset: Token Created
     
     Asset-->>User: Asset Tokenized
 ```
@@ -140,6 +153,7 @@ sequenceDiagram
     participant AuthN
     participant AuthZ
     participant Asset
+    participant TokenSDK
     participant Fabric
     
     User->>AuthN: Validate Session
@@ -149,83 +163,112 @@ sequenceDiagram
     Asset->>AuthZ: Check Permission
     AuthZ-->>Asset: Permission Granted
     
-    Asset->>Fabric: Submit Transaction
+    Asset->>TokenSDK: Submit Transaction
+    TokenSDK->>Fabric: Execute Transaction
     Fabric->>Fabric: Validate & Commit
-    Fabric-->>Asset: Transaction Complete
+    Fabric-->>TokenSDK: Transaction Complete
+    TokenSDK-->>Asset: Transaction Complete
     
     Asset-->>User: Transfer Confirmed
 ```
 
-### 2.5 Component Details
-
-* **Asset Service**:
-  * Asset information and metadata management
-  * Tokenization and token lifecycle management
-  * Token transaction processing
-  * Fabric and DID Service integration
-  * Balance and state management
-
-* **Event Service**:
-  * Real-time event processing
-  * Update notifications
-  * Status monitoring
-  * Data analytics
-
-## 3. Functional Requirements
-
-### 3.1 Asset Management
-* Create and manage digital assets
-* Asset tokenization
-* Metadata management
-* Status tracking
-
-### 3.2 Transaction Management
-* Token creation and transfer
-* Token burning
-* Transaction history tracking
-* Transaction confirmation
-
-### 3.3 User Management
-* Registration and authentication
-* Role management
-* KYC/AML
-* Session management
-
-### 3.4 Reporting and Monitoring
-* Transaction reporting
-* Asset reporting
-* System monitoring
-* Audit logging
-
-## 4. Non-Functional Requirements
-
-### 4.1 Performance
-* Response time < 2s
-* Support 1000+ transactions/second
-* Horizontal scalability
-* Resource optimization
-
-### 4.2 Security
-* Data encryption
-* Multi-factor authentication
-* Granular permissions
-* Audit trail
-
-### 4.3 Availability
-* 99.9% uptime
-* Automatic recovery
-* Regular backups
-* Real-time monitoring
-
-### 4.4 Compliance
-* KYC/AML
-* Transaction reporting
-* Data retention
-* Audit logging
-
 ## 5. Service Interfaces
 
-### 5.1 Asset ↔ DID Interface
+### 5.1 Asset ↔ AuthN Interface
+
+```protobuf
+service AuthNService {
+    // Validate JWT token
+    rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse);
+    
+    // Get user information from token
+    rpc GetUserInfo(GetUserInfoRequest) returns (GetUserInfoResponse);
+    
+    // Validate session
+    rpc ValidateSession(ValidateSessionRequest) returns (ValidateSessionResponse);
+}
+
+message ValidateTokenRequest {
+    string jwt_token = 1;
+}
+
+message ValidateTokenResponse {
+    bool is_valid = 1;
+    string user_id = 2;
+    repeated string roles = 3;
+    int64 expires_at = 4;
+}
+
+message GetUserInfoRequest {
+    string user_id = 1;
+}
+
+message GetUserInfoResponse {
+    string user_id = 1;
+    string email = 2;
+    string full_name = 3;
+    repeated string roles = 4;
+    bool is_active = 5;
+}
+
+message ValidateSessionRequest {
+    string session_id = 1;
+}
+
+message ValidateSessionResponse {
+    bool is_valid = 1;
+    string user_id = 2;
+    int64 expires_at = 3;
+}
+```
+
+### 5.2 Asset ↔ AuthZ Interface
+
+```protobuf
+service AuthZService {
+    // Check access permission
+    rpc CheckPermission(CheckPermissionRequest) returns (CheckPermissionResponse);
+    
+    // Get user's permissions
+    rpc GetUserPermissions(GetUserPermissionsRequest) returns (GetUserPermissionsResponse);
+    
+    // Check asset ownership
+    rpc CheckAssetOwnership(CheckAssetOwnershipRequest) returns (CheckAssetOwnershipResponse);
+}
+
+message CheckPermissionRequest {
+    string user_id = 1;
+    string resource = 2;
+    string action = 3;
+}
+
+message CheckPermissionResponse {
+    bool allowed = 1;
+    string reason = 2;
+}
+
+message GetUserPermissionsRequest {
+    string user_id = 1;
+}
+
+message GetUserPermissionsResponse {
+    repeated string permissions = 1;
+    map<string, string> constraints = 2;
+}
+
+message CheckAssetOwnershipRequest {
+    string user_id = 1;
+    string asset_id = 2;
+}
+
+message CheckAssetOwnershipResponse {
+    bool is_owner = 1;
+    string ownership_type = 2; // FULL, PARTIAL, NONE
+    double ownership_percentage = 3;
+}
+```
+
+### 5.3 Asset ↔ DID Interface
 
 ```protobuf
 service AssetService {
@@ -260,70 +303,6 @@ enum AssetType {
     CERTIFICATE_OF_DEPOSIT = 1;
     INVESTMENT_FUND = 2;
     STABLECOIN = 3;
-}
-```
-
-### 5.2 Asset ↔ Token Interface
-
-```protobuf
-service TokenService {
-    // Create token for asset
-    rpc MintToken(MintTokenRequest) returns (MintTokenResponse);
-    
-    // Transfer token
-    rpc TransferToken(TransferTokenRequest) returns (TransferTokenResponse);
-    
-    // Burn token
-    rpc BurnToken(BurnTokenRequest) returns (BurnTokenResponse);
-    
-    // Get token information
-    rpc GetToken(GetTokenRequest) returns (GetTokenResponse);
-}
-
-message MintTokenRequest {
-    string asset_id = 1;
-    string owner_did = 2;
-    uint64 amount = 3;
-    string metadata_uri = 4;
-}
-
-message MintTokenResponse {
-    string token_id = 1;
-    string transaction_id = 2;
-    string status = 3;
-}
-
-message TransferTokenRequest {
-    string token_id = 1;
-    string from_did = 2;
-    string to_did = 3;
-    uint64 amount = 4;
-}
-
-message TransferTokenResponse {
-    string transaction_id = 1;
-    string status = 2;
-}
-```
-
-### 5.3 Asset ↔ Event Interface
-
-```protobuf
-service EventService {
-    // Subscribe to events
-    rpc Subscribe(SubscribeRequest) returns (stream Event);
-    
-    // Publish event
-    rpc Publish(PublishRequest) returns (PublishResponse);
-}
-
-message Event {
-    string event_type = 1;
-    string token_id = 2;
-    string transaction_id = 3;
-    string status = 4;
-    int64 timestamp = 5;
-    map<string, string> metadata = 6;
 }
 ```
 

@@ -191,6 +191,7 @@ sequenceDiagram
 
 ### 2.4 Luồng giao dịch
 
+
 ```mermaid
 sequenceDiagram
     participant User
@@ -605,3 +606,58 @@ sequenceDiagram
 * Phase 4: Advanced features
 
 *Cập nhật: 31/05/2025*
+
+## 2.5 Token Service
+
+### 2.5.1 Mục tiêu
+
+`Token Service` là một microservice độc lập phụ trách toàn bộ nghiệp vụ liên quan đến việc **tạo, quản lý, chuyển giao và giám sát token** được phát hành từ các tài sản số. Việc tách riêng `Token Service` nhằm đảm bảo khả năng mở rộng, hiệu năng, và dễ dàng tích hợp các tính năng nâng cao như marketplace, staking, và phân phối lợi nhuận.
+
+### 2.5.2 Chức năng chính
+
+| Chức năng | Mô tả |
+|----------|------|
+| **Mint** | Phát hành token mới dựa trên tài sản đã được duyệt |
+| **Burn** | Hủy token trong các trường hợp thu hồi, giải thể tài sản |
+| **Transfer** | Chuyển token giữa các DID/user |
+| **Balance** | Truy vấn số dư token theo DID hoặc địa chỉ |
+| **Allowance / Approve** | Cho phép bên thứ ba thực hiện chuyển token thay mặt |
+| **Transaction History** | Ghi nhận và truy vấn lịch sử giao dịch token |
+| **Marketplace (tùy chọn)** | Tạo order, khớp lệnh, quản lý giao dịch token P2P |
+| **Dividend Distribution (tùy chọn)** | Phân phối lợi nhuận dựa trên tỷ lệ sở hữu token |
+
+### 2.5.3 Kiến trúc tích hợp
+
+```mermaid
+graph TD
+    User[User / DID Holder]
+    Asset[Asset Service]
+    Token[Token Service]
+    AuthN[AuthN Service]
+    AuthZ[AuthZ Service]
+    Fabric[Fabric Network]
+
+    User --> AuthN
+    User --> Asset
+    Asset --> AuthZ
+    Asset --> Token
+    Token --> Fabric
+    Asset --> Fabric
+    Token --> AuthZ
+    Token --> AuthN
+```
+
+### 2.5.4 Mối quan hệ với các dịch vụ khác
+
+- **Asset Service**: chỉ gọi `Token Service` để mint/burn khi tài sản đã đạt trạng thái `approved`
+- **AuthZ Service**: kiểm tra quyền khi thực hiện các thao tác với token (mint, transfer, burn)
+- **DID Middleware**: cung cấp DID và thông tin định danh vào context request token
+- **Fabric Chaincode**: ghi nhận giao dịch token (ERC-20 logic hoặc Token SDK)
+
+### 2.5.5 Gợi ý triển khai
+
+- Giao tiếp qua gRPC giữa Asset ↔ Token
+- Lưu balance và history trên Fabric (immutable)
+- Cache một phần thông tin trong PostgreSQL hoặc Redis để phục vụ API
+- Tách logic xử lý token ra khỏi metadata tài sản để tăng khả năng mở rộng
+- Có thể bổ sung logic escrow, whitelist/blacklist, hoặc compliance rule trong marketplace
