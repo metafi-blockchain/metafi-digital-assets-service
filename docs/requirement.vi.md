@@ -1,4 +1,4 @@
-# Yêu Cầu Chức Năng - Hệ Thống Quản Lý Tài Sản Số (Digital Asset Service)
+# Yêu Cầu Kỹ Thuật - Hệ Thống Quản Lý Tài Sản Số
 
 ## 1. Mục tiêu hệ thống
 
@@ -106,6 +106,6 @@ Xây dựng một hệ thống quản lý tài sản số tích hợp với bloc
 * DID Service có thể được viết bằng Go hoặc NestJS tùy môi trường
 * Giao dịch nên thực hiện qua gRPC hoặc HTTP API Gateway
 * Cơ sở dữ liệu lưu thông tin metadata về tài sản token hóa (PostgreSQL hoặc MongoDB tùy quy mô)
-* Có thể dùng IPFS hoặc MinIO để lưu trữ file chứng nhận/metadata nếu cần
+* IPFS hoặc MinIO có thể dùng để lưu trữ file chứng nhận/metadata nếu cần
 
-*Cập nhật: 31/05/2025*
+*Cập nhật: 31/05/2025* 
