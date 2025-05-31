@@ -8,6 +8,95 @@ Xây dựng một hệ thống quản lý tài sản số tích hợp với bloc
 
 ## 2. Kiến trúc hệ thống tổng thể
 
+### 2.1 Sơ đồ kiến trúc
+
+```mermaid
+graph TD
+    Client[Client Application] --> AuthN[AuthN Service]
+    Client --> AuthZ[AuthZ Service]
+    Client --> Token[Token Service]
+    Client --> DID[DID Service]
+    
+    AuthN --> DB1[(User DB)]
+    AuthZ --> DB2[(RBAC DB)]
+    DID --> DB3[(Identity DB)]
+    Token --> DB4[(Token DB)]
+    
+    Token --> Fabric[Fabric Network]
+    DID --> Fabric
+    
+    Token --> Storage[(IPFS/MinIO)]
+    
+    subgraph "Blockchain Layer"
+        Fabric --> Chaincode[Token Chaincode]
+        Fabric --> MSP[MSP Identity]
+    end
+    
+    subgraph "Storage Layer"
+        Storage --> Metadata[Asset Metadata]
+        Storage --> Documents[Legal Documents]
+    end
+```
+
+### 2.2 Luồng xử lý DID
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Client
+    participant DID
+    participant Fabric
+    
+    User->>Client: Đăng ký tài khoản
+    Client->>DID: Tạo DID Request
+    DID->>DID: Tạo DID Document
+    DID->>Fabric: Tạo MSP Identity
+    Fabric-->>DID: MSP Certificate
+    DID->>DID: Lưu DID & Certificate
+    DID-->>Client: DID & Certificate
+    Client-->>User: Xác nhận đăng ký
+    
+    Note over User,Fabric: Quy trình KYC
+    User->>Client: Nộp KYC
+    Client->>DID: Verify KYC Request
+    DID->>DID: Xác thực KYC
+    DID->>Fabric: Cập nhật MSP
+    DID-->>Client: KYC Status
+    Client-->>User: KYC Result
+```
+
+### 2.3 Luồng giao dịch token
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Client
+    participant AuthN
+    participant AuthZ
+    participant Token
+    participant DID
+    participant Fabric
+    
+    User->>Client: Yêu cầu giao dịch
+    Client->>AuthN: Xác thực JWT
+    AuthN-->>Client: JWT Valid
+    
+    Client->>AuthZ: Kiểm tra quyền
+    AuthZ-->>Client: Permission Granted
+    
+    Client->>DID: Lấy MSP Identity
+    DID-->>Client: MSP Certificate
+    
+    Client->>Token: Gửi giao dịch
+    Token->>Fabric: Submit Transaction
+    Fabric->>Fabric: Validate & Commit
+    Fabric-->>Token: Transaction Result
+    
+    Token->>Token: Cập nhật trạng thái
+    Token-->>Client: Transaction Status
+    Client-->>User: Kết quả giao dịch
+```
+
 * **AuthN Service**: Cung cấp xác thực người dùng và cấp JWT token cho các phiên làm việc.
 * **AuthZ Service**: Quản lý phân quyền truy cập dựa trên vai trò người dùng (RBAC).
 * **DID Service**: Cung cấp DID (Decentralized Identifiers) và ánh xạ người dùng đến danh tính trong hệ thống (MSP, cert).
@@ -151,5 +240,102 @@ Xây dựng một hệ thống quản lý tài sản số tích hợp với bloc
 * IPFS hoặc MinIO có thể dùng để lưu trữ file chứng nhận/metadata nếu cần
 * Hỗ trợ triển khai đa chuỗi trong tương lai
 * Tích hợp Chainlink để cập nhật giá và NAV
+
+*Cập nhật: 31/05/2025*
+
+## 7. Tích hợp với hệ thống AuthN/AuthZ hiện tại
+
+### 7.1 Tích hợp AuthN Service
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant AuthN
+    participant Legacy[Legacy Auth System]
+    participant DB[(User DB)]
+    
+    Client->>AuthN: Login Request
+    AuthN->>Legacy: Validate Credentials
+    Legacy->>DB: Check User Data
+    DB-->>Legacy: User Info
+    Legacy-->>AuthN: Auth Result
+    AuthN->>AuthN: Generate JWT
+    AuthN-->>Client: JWT Token
+    
+    Note over Client,DB: Token Refresh Flow
+    Client->>AuthN: Refresh Token
+    AuthN->>Legacy: Validate Refresh Token
+    Legacy-->>AuthN: Token Valid
+    AuthN->>AuthN: Generate New JWT
+    AuthN-->>Client: New JWT Token
+```
+
+* **Tích hợp xác thực**:
+  * Sử dụng API Gateway hiện tại để xác thực
+  * Chuyển đổi session token sang JWT
+  * Hỗ trợ SSO với hệ thống hiện tại
+  * Duy trì backward compatibility
+
+* **Quản lý phiên**:
+  * Đồng bộ session giữa hệ thống cũ và mới
+  * Hỗ trợ token refresh
+  * Xử lý logout đồng bộ
+  * Theo dõi trạng thái phiên
+
+### 7.2 Tích hợp AuthZ Service
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant AuthZ
+    participant Legacy[Legacy RBAC]
+    participant DB[(RBAC DB)]
+    
+    Client->>AuthZ: Check Permission
+    AuthZ->>Legacy: Get User Roles
+    Legacy->>DB: Query Permissions
+    DB-->>Legacy: Role Data
+    Legacy-->>AuthZ: Permission Result
+    AuthZ->>AuthZ: Apply Policies
+    AuthZ-->>Client: Access Decision
+```
+
+* **Tích hợp phân quyền**:
+  * Map roles từ hệ thống cũ sang RBAC mới
+  * Chuyển đổi permissions format
+  * Hỗ trợ policy inheritance
+  * Duy trì audit trail
+
+* **Quản lý quyền**:
+  * Đồng bộ role changes
+  * Validate permissions
+  * Cache permission data
+  * Log access decisions
+
+### 7.3 Yêu cầu kỹ thuật
+
+* **API Integration**:
+  * REST API endpoints cho AuthN/AuthZ
+  * gRPC services cho internal calls
+  * WebSocket cho real-time updates
+  * Rate limiting và circuit breaking
+
+* **Data Migration**:
+  * Migrate user data
+  * Convert role mappings
+  * Preserve audit logs
+  * Validate data integrity
+
+* **Security**:
+  * Encrypt sensitive data
+  * Secure API communication
+  * Monitor integration points
+  * Regular security audits
+
+* **Monitoring**:
+  * Track integration metrics
+  * Alert on failures
+  * Monitor performance
+  * Log integration events
 
 *Cập nhật: 31/05/2025* 

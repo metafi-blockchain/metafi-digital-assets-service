@@ -89,6 +89,106 @@
 * Track transactions on-chain or hash off-chain data for verification.
 * Enforce reporting access through AuthZ Service
 
+## 2. System Architecture
+
+### 2.1 Architecture Diagram
+
+```mermaid
+graph TD
+    Client[Client Application] --> AuthN[AuthN Service]
+    Client --> AuthZ[AuthZ Service]
+    Client --> Token[Token Service]
+    Client --> DID[DID Service]
+    
+    AuthN --> DB1[(User DB)]
+    AuthZ --> DB2[(RBAC DB)]
+    DID --> DB3[(Identity DB)]
+    Token --> DB4[(Token DB)]
+    
+    Token --> Fabric[Fabric Network]
+    DID --> Fabric
+    
+    Token --> Storage[(IPFS/MinIO)]
+    
+    subgraph "Blockchain Layer"
+        Fabric --> Chaincode[Token Chaincode]
+        Fabric --> MSP[MSP Identity]
+    end
+    
+    subgraph "Storage Layer"
+        Storage --> Metadata[Asset Metadata]
+        Storage --> Documents[Legal Documents]
+    end
+```
+
+### 2.2 DID Processing Flow
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Client
+    participant DID
+    participant Fabric
+    
+    User->>Client: Register Account
+    Client->>DID: Create DID Request
+    DID->>DID: Create DID Document
+    DID->>Fabric: Create MSP Identity
+    Fabric-->>DID: MSP Certificate
+    DID->>DID: Store DID & Certificate
+    DID-->>Client: DID & Certificate
+    Client-->>User: Registration Confirmation
+    
+    Note over User,Fabric: KYC Process
+    User->>Client: Submit KYC
+    Client->>DID: Verify KYC Request
+    DID->>DID: Validate KYC
+    DID->>Fabric: Update MSP
+    DID-->>Client: KYC Status
+    Client-->>User: KYC Result
+```
+
+### 2.3 Token Transaction Flow
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Client
+    participant AuthN
+    participant AuthZ
+    participant Token
+    participant DID
+    participant Fabric
+    
+    User->>Client: Transaction Request
+    Client->>AuthN: Validate JWT
+    AuthN-->>Client: JWT Valid
+    
+    Client->>AuthZ: Check Permission
+    AuthZ-->>Client: Permission Granted
+    
+    Client->>DID: Get MSP Identity
+    DID-->>Client: MSP Certificate
+    
+    Client->>Token: Submit Transaction
+    Token->>Fabric: Submit Transaction
+    Fabric->>Fabric: Validate & Commit
+    Fabric-->>Token: Transaction Result
+    
+    Token->>Token: Update State
+    Token-->>Client: Transaction Status
+    Client-->>User: Transaction Result
+```
+
+### 2.4 Service Components
+
+* **AuthN Service**: Provides user authentication and issues JWT tokens for sessions
+* **AuthZ Service**: Manages access control based on user roles (RBAC)
+* **DID Service**: Provides DID (Decentralized Identifiers) and maps users to system identities (MSP, cert)
+* **Token Service**: Implements token logic (mint, transfer, burn, view) through Fabric Token SDK
+* **Client App**: Frontend interface for user interaction
+* **Fabric Network**: Records tokenized asset transactions on private blockchain network
+
 ## 2. Non-Functional Requirements
 
 ### 2.1 Security
@@ -149,5 +249,102 @@
 | Periodic Trading (SIP)     | Low        |
 | NAV Updates via Oracle     | Low        |
 | Cross-chain Support        | Low        |
+
+*Last Updated: 31/05/2025*
+
+## 4. Integration with Existing AuthN/AuthZ Systems
+
+### 4.1 AuthN Service Integration
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant AuthN
+    participant Legacy[Legacy Auth System]
+    participant DB[(User DB)]
+    
+    Client->>AuthN: Login Request
+    AuthN->>Legacy: Validate Credentials
+    Legacy->>DB: Check User Data
+    DB-->>Legacy: User Info
+    Legacy-->>AuthN: Auth Result
+    AuthN->>AuthN: Generate JWT
+    AuthN-->>Client: JWT Token
+    
+    Note over Client,DB: Token Refresh Flow
+    Client->>AuthN: Refresh Token
+    AuthN->>Legacy: Validate Refresh Token
+    Legacy-->>AuthN: Token Valid
+    AuthN->>AuthN: Generate New JWT
+    AuthN-->>Client: New JWT Token
+```
+
+* **Authentication Integration**:
+  * Use existing API Gateway for authentication
+  * Convert session tokens to JWT
+  * Support SSO with existing system
+  * Maintain backward compatibility
+
+* **Session Management**:
+  * Synchronize sessions between old and new systems
+  * Support token refresh
+  * Handle synchronized logout
+  * Track session state
+
+### 4.2 AuthZ Service Integration
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant AuthZ
+    participant Legacy[Legacy RBAC]
+    participant DB[(RBAC DB)]
+    
+    Client->>AuthZ: Check Permission
+    AuthZ->>Legacy: Get User Roles
+    Legacy->>DB: Query Permissions
+    DB-->>Legacy: Role Data
+    Legacy-->>AuthZ: Permission Result
+    AuthZ->>AuthZ: Apply Policies
+    AuthZ-->>Client: Access Decision
+```
+
+* **Authorization Integration**:
+  * Map roles from legacy to new RBAC
+  * Convert permissions format
+  * Support policy inheritance
+  * Maintain audit trail
+
+* **Permission Management**:
+  * Synchronize role changes
+  * Validate permissions
+  * Cache permission data
+  * Log access decisions
+
+### 4.3 Technical Requirements
+
+* **API Integration**:
+  * REST API endpoints for AuthN/AuthZ
+  * gRPC services for internal calls
+  * WebSocket for real-time updates
+  * Rate limiting and circuit breaking
+
+* **Data Migration**:
+  * Migrate user data
+  * Convert role mappings
+  * Preserve audit logs
+  * Validate data integrity
+
+* **Security**:
+  * Encrypt sensitive data
+  * Secure API communication
+  * Monitor integration points
+  * Regular security audits
+
+* **Monitoring**:
+  * Track integration metrics
+  * Alert on failures
+  * Monitor performance
+  * Log integration events
 
 *Last Updated: 31/05/2025* 
