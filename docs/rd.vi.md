@@ -333,18 +333,25 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Owner
-    participant System
-    participant DID
+    participant AssetService
+    participant DIDService
+    participant TokenService
     participant Blockchain
-    
-    Owner->>System: Yêu cầu chia nhỏ tài sản
-    System->>System: Tính toán số lượng fraction
-    System->>DID: Xác thực DID chủ sở hữu
-    DID-->>System: Xác nhận DID
-    System->>Blockchain: Tạo fraction tokens
-    Blockchain-->>System: Xác nhận
-    System->>System: Mapping fraction với DID
-    System-->>Owner: Thông báo hoàn tất
+
+    Owner->>AssetService: Yêu cầu chia nhỏ tài sản (asset_id, config)
+    AssetService->>DIDService: Xác thực DID chủ sở hữu
+    DIDService-->>AssetService: DID hợp lệ
+
+    AssetService->>AssetService: Tính toán số lượng fraction, lưu metadata
+    AssetService->>TokenService: Yêu cầu phát hành fraction token
+
+    TokenService->>Blockchain: Triển khai token (mint/split)
+    Blockchain-->>TokenService: Success
+
+    TokenService->>AssetService: Trả lại token_ids, tx_hash
+    AssetService->>AssetService: Mapping fraction-token ↔ DID
+
+    AssetService-->>Owner: Phản hồi thành công (fraction_token_ids, tx_hash)
 ```
 
 #### 3.5.3 Interface gRPC
