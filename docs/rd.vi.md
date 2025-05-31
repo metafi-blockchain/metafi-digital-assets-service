@@ -272,22 +272,20 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-    participant Client
-    participant AuthN
-    participant JWK[JWK Service]
+    participant Service[Other Service]
+    participant AuthN[AuthN Service]
     
-    Client->>AuthN: Request JWK
-    AuthN->>JWK: Get Public Keys
-    JWK-->>AuthN: JWK Set
-    AuthN-->>Client: JWK Set
-    
-    Note over Client,JWK: JWT Validation Flow
-    Client->>Client: Validate JWT
-    Client->>AuthN: Verify Token
-    AuthN->>JWK: Get Key by Kid
-    JWK-->>AuthN: Public Key
+    Note over Service,AuthN: JWT Validation Flow
+    Service->>AuthN: ValidateToken(JWT)
     AuthN->>AuthN: Verify Signature
-    AuthN-->>Client: Validation Result
+    AuthN->>AuthN: Check Expiration
+    AuthN->>AuthN: Validate Claims
+    AuthN-->>Service: Validation Result
+    
+    Note over Service,AuthN: JWK Management
+    AuthN->>AuthN: Generate Key Pair
+    AuthN->>AuthN: Store Private Key
+    AuthN->>AuthN: Publish Public Key
 ```
 
 * **Tích hợp xác thực**:
@@ -302,19 +300,19 @@ sequenceDiagram
   * Xử lý logout đồng bộ
   * Theo dõi trạng thái phiên
 
-* **Quản lý JWT**:
-  * Expose JWK endpoint qua gRPC
-  * Cung cấp public keys cho việc validate JWT
-  * Hỗ trợ key rotation
-  * Cache JWK responses
-  * Implement token validation service
+* **JWT Management & Validation**:
+  * AuthN Service quản lý toàn bộ lifecycle của JWT
+  * Expose gRPC endpoint cho các service khác validate token
+  * Tự động rotate key pairs
+  * Cache validation results
+  * Hỗ trợ token revocation
 
 * **Tính năng bảo mật**:
   * Sử dụng RSA/ECDSA key pairs cho JWT signing
-  * Chính sách key rotation
-  * Hỗ trợ token revocation
-  * Rate limiting cho JWK requests
-  * Secure key storage
+  * Private key được lưu trữ an toàn trong AuthN Service
+  * Public key được publish cho các service khác
+  * Rate limiting cho validation requests
+  * Audit log cho mọi validation request
 
 ### 7.2 Tích hợp AuthZ Service
 
