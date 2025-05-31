@@ -92,11 +92,12 @@ graph TD
         AuthZ[AuthZ Service]
         DID[DID Service]
         Asset[Asset Service]
+        Token[Token Service
+(sử dụng Token SDK)]
     end
 
     subgraph "Blockchain Layer"
         Fabric[Fabric Network]
-        TokenSDK[Token SDK/Chaincode]
         MSP[MSP Identity]
     end
 
@@ -113,20 +114,14 @@ graph TD
     Asset --> AuthN
     Asset --> AuthZ
     Asset --> DID
+    Asset --> Token
 
-    Asset --> TokenSDK
-    TokenSDK --> Fabric
+    Token --> Fabric
     DID --> Fabric
 
     Asset --> DB
     Asset --> Cache
     Asset --> Storage
-
-    %% Interface Labels
-    Asset -.->|"Asset ↔ AuthN"| AuthN
-    Asset -.->|"Asset ↔ AuthZ"| AuthZ
-    Asset -.->|"Asset ↔ DID"| DID
-    Asset -.->|"Asset ↔ TokenSDK"| TokenSDK
 ```
 
 ### 2.2 Các thành phần chính
@@ -144,7 +139,11 @@ graph TD
   * Tương tác với Hyperledger Fabric thông qua chaincode ERC-20 hoặc Token SDK
   * Có khả năng mở rộng các chức năng như marketplace, staking, hoặc phân phối lợi nhuận
 
-* **Token SDK/Chaincode**:
+* **Token SDK/Chaincode** (thư viện nội bộ):
+  * Cung cấp hàm logic chuẩn để mint, transfer, burn token
+  * Được gọi trực tiếp bởi Token Service
+  * Được đóng gói dưới dạng chaincode để triển khai lên Hyperledger Fabric
+  * Không phải là một service độc lập
   * Cung cấp các hàm cơ bản cho token (mint, transfer, burn)
   * Quản lý trạng thái token trên blockchain
   * Xác thực giao dịch token
@@ -638,21 +637,47 @@ sequenceDiagram
 
 ```mermaid
 graph TD
-    User[User / DID Holder]
-    Asset[Asset Service]
-    Token[Token Service]
-    AuthN[AuthN Service]
-    AuthZ[AuthZ Service]
-    Fabric[Fabric Network]
+    subgraph "Client Layer"
+        Web[Web App]
+        Mobile[Mobile App]
+        API[API Client]
+    end
 
-    User --> AuthN
-    User --> Asset
+    subgraph "Service Layer"
+        AuthN[AuthN Service]
+        AuthZ[AuthZ Service]
+        DID[DID Service]
+        Asset[Asset Service]
+        Token[Token Service
+(sử dụng Token SDK)]
+    end
+
+    subgraph "Blockchain Layer"
+        Fabric[Fabric Network]
+        MSP[MSP Identity]
+    end
+
+    subgraph "Storage Layer"
+        DB[(Database)]
+        Cache[(Redis Cache)]
+        Storage[(IPFS/MinIO)]
+    end
+
+    Web --> Asset
+    Mobile --> Asset
+    API --> Asset
+
+    Asset --> AuthN
     Asset --> AuthZ
+    Asset --> DID
     Asset --> Token
+
     Token --> Fabric
-    Asset --> Fabric
-    Token --> AuthZ
-    Token --> AuthN
+    DID --> Fabric
+
+    Asset --> DB
+    Asset --> Cache
+    Asset --> Storage
 ```
 
 ### 2.5.4 Mối quan hệ với các dịch vụ khác
