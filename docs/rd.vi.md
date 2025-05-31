@@ -45,12 +45,11 @@ graph TD
         AuthZ[AuthZ Service]
         DID[DID Service]
         Asset[Asset Service]
-        Event[Event Service]
     end
 
     subgraph "Blockchain Layer"
         Fabric[Fabric Network]
-        Chaincode[Token Chaincode]
+        TokenSDK[Token SDK/Chaincode]
         MSP[MSP Identity]
     end
 
@@ -60,30 +59,42 @@ graph TD
         Storage[(IPFS/MinIO)]
     end
 
-    Web --> AuthN
-    Mobile --> AuthN
-    API --> AuthN
+    Web --> Asset
+    Mobile --> Asset
+    API --> Asset
 
-    AuthN --> AuthZ
-    AuthN --> DID
-    AuthN --> Asset
+    Asset --> AuthN
+    Asset --> AuthZ
+    Asset --> DID
 
-    Asset --> Fabric
+    Asset --> TokenSDK
+    TokenSDK --> Fabric
     DID --> Fabric
-    Event --> Fabric
 
     Asset --> DB
-    Event --> Cache
+    Asset --> Cache
     Asset --> Storage
+
+    %% Interface Labels
+    Asset -.->|"Asset ↔ AuthN"| AuthN
+    Asset -.->|"Asset ↔ AuthZ"| AuthZ
+    Asset -.->|"Asset ↔ DID"| DID
+    Asset -.->|"Asset ↔ TokenSDK"| TokenSDK
 ```
 
 ### 2.2 Các thành phần chính
 * **Asset Service**: 
   * Quản lý thông tin tài sản và metadata
-  * Xử lý token hóa và quản lý vòng đời token
-  * Xử lý giao dịch token
+  * Xử lý token hóa và quản lý vòng đời token thông qua Token SDK
+  * Xử lý giao dịch token trên Fabric Network
   * Tích hợp với Fabric và DID Service
   * Quản lý số dư và trạng thái
+
+* **Token SDK/Chaincode**:
+  * Cung cấp các hàm cơ bản cho token (mint, transfer, burn)
+  * Quản lý trạng thái token trên blockchain
+  * Xác thực giao dịch token
+  * Tích hợp với Fabric Network
 
 * **AuthN Service**:
   * Xác thực người dùng
