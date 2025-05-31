@@ -232,3 +232,9 @@
 * Quản lý rủi ro tự động
 
 *Cập nhật: 31/05/2025* 
+
+	•	🔜 Gợi ý bước tiếp theo: Viết thêm tài liệu kỹ thuật tương ứng như:
+	•	DID Integration Design
+	•	Smart Contract Function Spec
+	•	KYC/AML Flow with ACA-Py
+	•	API/gRPC Spec cho từng module (asset/token/identity)
