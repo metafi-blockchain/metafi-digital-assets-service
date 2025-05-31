@@ -204,20 +204,22 @@ sequenceDiagram
     participant AuthN
     participant AuthZ
     participant Asset
+    participant Token
     participant Fabric
-    
+
     User->>AuthN: Validate Session
     AuthN-->>User: Session Valid
-    
-    User->>Asset: Transfer Request
+
+    User->>Asset: Transfer Request (asset_id, to_did, amount)
     Asset->>AuthZ: Check Permission
     AuthZ-->>Asset: Permission Granted
-    
-    Asset->>Fabric: Submit Transaction
-    Fabric->>Fabric: Validate & Commit
-    Fabric-->>Asset: Transaction Complete
-    
-    Asset-->>User: Transfer Confirmed
+
+    Asset->>Token: Gửi yêu cầu transfer (gồm thông tin tài sản & token)
+    Token->>Fabric: Submit transfer transaction
+    Fabric-->>Token: Transfer Confirmed
+
+    Token-->>Asset: Status, tx_hash
+    Asset-->>User: Transaction Complete
 ```
 
 ## 3. Yêu cầu chức năng
