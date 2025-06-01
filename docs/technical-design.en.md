@@ -455,5 +455,3 @@ The following features/modules will be considered for future development phases:
 - **Marketplace** (asset trading, fraction trading, order placement)
 
 These topics will be detailed in future document updates as the system expands.
-
-*Last Updated: 31/05/2025* 
