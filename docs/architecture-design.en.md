@@ -28,7 +28,7 @@ graph TD
         Gateway[Kong API Gateway]
         AuthN[AuthN Service]
         AuthZ[AuthZ Service]
-        DID["DID Middleware<br/>ACA-Py"]
+        DID["DID Middleware"]
     end
 
     subgraph "Application Layer"
@@ -38,7 +38,7 @@ graph TD
 
     subgraph "Blockchain Layer"
         Fabric["Hyperledger Fabric<br/>Token SDK"]
-        Indy["Hyperledger Indy"]
+        Indy["Hyperledger Indy<br/>ACA-Py"]
     end
 
     subgraph "Storage Layer"
