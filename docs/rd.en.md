@@ -85,10 +85,34 @@ graph TD
 ### 2.2 Core Components
 * **Asset Service**: 
   * Asset information and metadata management
-  * Tokenization and token lifecycle management through Token SDK
-  * Token transaction processing on Fabric Network
-  * Fabric and DID Service integration
-  * Balance and state management
+  * DID verification for asset owners during creation and updates
+  * Initiates tokenization process by calling Token Service when assets are approved
+  * Records asset information (metadata hash, approval events) on Fabric if immutability is required
+  * Manages asset lifecycle states (Draft → Submitted → Approved/Rejected/AwaitingFix → Tokenized → Archived)
+  * Tracks and synchronizes token status through events from Token Service
+  * Logs audit for all metadata and state changes with information:
+    - Change timestamp
+    - Actor (DID)
+    - Change type (metadata/state)
+    - Old and new values
+    - Change reason
+    - Transaction hash (if applicable)
+    - IP address and user agent
+    - Session ID
+  * Handles Rejected and AwaitingFix states:
+    - Allows state transition from Submitted → Rejected/AwaitingFix
+    - Requires rejection reason or modification request
+    - Notifies asset owner
+    - Allows owner to update and resubmit from AwaitingFix state
+    - Maintains history of rejections and modification requests
+
+* **Token Service**:
+  * Responsible for entire token lifecycle (mint, burn, transfer, query balance, transaction history)
+  * Direct interaction with Hyperledger Fabric through standard ERC-20 chaincode or Token SDK module
+  * Receives tokenization requests from Asset Service and verifies DID before minting
+  * Records token transactions and balances in dedicated storage (PostgreSQL or MongoDB for fast queries)
+  * Supports extensions: Marketplace (order placement), Staking, Dividend/Profit distribution management
+  * Provides gRPC/REST interface for other services (Asset, Wallet, Marketplace) to access token data
 
 * **Token SDK/Chaincode**:
   * Provides basic token functions (mint, transfer, burn)
@@ -306,31 +330,165 @@ enum AssetType {
 }
 ```
 
-### 5.4 Implementation Notes
+### 5.4 Asset ↔ Token Service Interface
 
-* **gRPC Communication**:
-  * Use gRPC for all internal service communication
-  * Implement retry mechanism for service calls
-  * Use circuit breaker pattern
-  * Implement request timeouts
+#### 5.4.1 Objectives
+- **Asset Service**: manages metadata and asset lifecycle states
+- **Token Service**: responsible for tokenization, token transactions, and compliance
 
-* **Error Handling**:
-  * Define clear error codes for each service
-  * Implement proper error propagation
-  * Log detailed error information
-  * Implement retry mechanism for temporary errors
+#### 5.4.2 gRPC Interface: Token Service
 
-* **Security**:
-  * Encrypt all internal communication
-  * Implement service-to-service authentication
-  * Validate input data
-  * Rate limit all endpoints
+```protobuf
+service TokenService {
+    rpc RequestTokenization(RequestTokenizationRequest) returns (RequestTokenizationResponse);
+    rpc GetTokenizationStatus(GetTokenizationStatusRequest) returns (GetTokenizationStatusResponse);
+    rpc GetTokenInfo(GetTokenInfoRequest) returns (GetTokenInfoResponse);
+    rpc UpdateTokenState(UpdateTokenStateRequest) returns (UpdateTokenStateResponse);
+    rpc ValidateCompliance(ValidateComplianceRequest) returns (ValidateComplianceResponse);
+    rpc UpdateComplianceStatus(UpdateComplianceStatusRequest) returns (UpdateComplianceStatusResponse);
+}
 
-* **Monitoring**:
-  * Track latency for all service calls
-  * Monitor error rates
-  * Set up alerts for issues
-  * Log detailed debugging information
+message RequestTokenizationRequest {
+    string asset_id = 1;
+    string owner_did = 2;
+    TokenType token_type = 3;
+    double initial_supply = 4;
+    map<string, string> metadata = 5;
+}
+
+message RequestTokenizationResponse {
+    string tokenization_id = 1;
+    TokenizationStatus status = 2;
+    string message = 3;
+    int64 expires_at = 4;
+}
+
+enum TokenizationStatus {
+    INITIATED = 0;
+    VALIDATING = 1;
+    MINTING = 2;
+    SUCCESS = 3;
+    FAILED = 4;
+    REJECTED = 5;
+}
+
+message GetTokenizationStatusRequest {
+    string tokenization_id = 1;
+    string asset_id = 2;
+}
+
+message GetTokenizationStatusResponse {
+    TokenizationStatus status = 1;
+    string token_id = 2;
+    string message = 3;
+    map<string, string> details = 4;
+}
+
+message GetTokenInfoRequest {
+    string asset_id = 1;
+    string token_id = 2;
+}
+
+message GetTokenInfoResponse {
+    string token_id = 1;
+    string token_address = 2;
+    TokenType token_type = 3;
+    double total_supply = 4;
+    string owner_did = 5;
+    AssetState state = 6;
+    map<string, string> metadata = 7;
+}
+
+message UpdateTokenStateRequest {
+    string asset_id = 1;
+    string token_id = 2;
+    AssetState new_state = 3;
+    string reason = 4;
+    map<string, string> metadata = 5;
+}
+
+message UpdateTokenStateResponse {
+    string status = 1;
+    string message = 2;
+    string transaction_hash = 3;
+}
+
+enum AssetState {
+    ACTIVE = 0;
+    FROZEN = 1;
+    SUSPENDED = 2;
+    REVOKED = 3;
+    COMPLIANCE_HOLD = 4;
+}
+
+message ValidateComplianceRequest {
+    string asset_id = 1;
+    string token_id = 2;
+    ComplianceType compliance_type = 3;
+    map<string, string> parameters = 4;
+}
+
+message ValidateComplianceResponse {
+    bool valid = 1;
+    repeated string violations = 2;
+    string message = 3;
+    map<string, string> details = 4;
+}
+
+message UpdateComplianceStatusRequest {
+    string asset_id = 1;
+    string token_id = 2;
+    ComplianceStatus status = 3;
+    string report_id = 4;
+    map<string, string> details = 5;
+}
+
+message UpdateComplianceStatusResponse {
+    string status = 1;
+    string message = 2;
+    int64 updated_at = 3;
+}
+
+enum ComplianceType {
+    KYC = 0;
+    AML = 1;
+    SANCTIONS = 2;
+    REGULATORY = 3;
+}
+
+enum ComplianceStatus {
+    COMPLIANT = 0;
+    NON_COMPLIANT = 1;
+    PENDING_REVIEW = 2;
+    EXEMPTED = 3;
+}
+```
+
+#### 5.4.3 Implementation Notes
+
+- **gRPC Communication**:
+  - Use gRPC for all internal service communication
+  - Implement retry mechanism for service calls
+  - Use circuit breaker pattern
+  - Implement request timeouts
+
+- **Error Handling**:
+  - Define clear error codes for each service
+  - Implement proper error propagation
+  - Log detailed error information
+  - Implement retry mechanism for temporary errors
+
+- **Security**:
+  - Encrypt all internal communication
+  - Implement service-to-service authentication
+  - Validate input data
+  - Rate limit all endpoints
+
+- **Monitoring**:
+  - Track latency for all service calls
+  - Monitor error rates
+  - Set up alerts for issues
+  - Log detailed debugging information
 
 ## 6. User Roles and Permissions
 
@@ -548,10 +706,172 @@ sequenceDiagram
 * Monitoring system
 
 ### 8.2 Operational Procedures
-* Monitoring and alerting
-* Backup and restore
-* Scaling and load balancing
-* Security patching
+
+#### 8.2.1 Monitoring with Prometheus + Grafana
+
+##### 8.2.1.1 Metrics to Monitor
+
+- **Service Metrics**:
+  - Request rate (RPS)
+  - Response time (p50, p90, p99)
+  - Error rate
+  - Service uptime
+  - Resource usage (CPU, Memory, Disk)
+  - Audit log volume and retention
+
+- **Token Metrics**:
+  - Token mint rate
+  - Token transfer volume
+  - Token burn rate
+  - Active token holders
+  - Token transaction latency
+
+- **Blockchain Metrics**:
+  - Transaction throughput
+  - Block confirmation time
+  - Network latency
+  - Peer status
+  - Chaincode performance
+
+- **Business Metrics**:
+  - Daily active users
+  - Transaction volume
+  - Asset tokenization rate
+  - User growth rate
+  - Error distribution
+
+##### 8.2.1.2 Prometheus Configuration
+
+```yaml
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'asset-service'
+    static_configs:
+      - targets: ['asset-service:8080']
+    metrics_path: '/metrics'
+    
+  - job_name: 'token-service'
+    static_configs:
+      - targets: ['token-service:8080']
+    metrics_path: '/metrics'
+    
+  - job_name: 'fabric-network'
+    static_configs:
+      - targets: ['fabric-peer:8080']
+    metrics_path: '/metrics'
+```
+
+##### 8.2.1.3 Grafana Dashboards
+
+- **Service Overview**:
+  - System health
+  - Resource utilization
+  - Error rates
+  - Response times
+
+- **Token Operations**:
+  - Mint/Transfer/Burn rates
+  - Transaction volume
+  - Token holder statistics
+  - Transaction latency
+
+- **Blockchain Health**:
+  - Network status
+  - Peer health
+  - Transaction throughput
+  - Block metrics
+
+- **Business Analytics**:
+  - User activity
+  - Transaction trends
+  - Asset tokenization
+  - Error analysis
+
+##### 8.2.1.4 Alerting Rules
+
+```yaml
+groups:
+  - name: service_alerts
+    rules:
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: High error rate detected
+          
+      - alert: HighLatency
+        expr: http_request_duration_seconds{quantile="0.9"} > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: High latency detected
+          
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: Service is down
+```
+
+##### 8.2.1.5 Monitoring Architecture
+
+```mermaid
+graph TD
+    subgraph "Application Layer"
+        Asset[Asset Service]
+        Token[Token Service]
+        Fabric[Fabric Network]
+    end
+    
+    subgraph "Monitoring Layer"
+        Prometheus[Prometheus]
+        Grafana[Grafana]
+        AlertManager[Alert Manager]
+    end
+    
+    subgraph "Notification Layer"
+        Slack[Slack]
+        Email[Email]
+        PagerDuty[PagerDuty]
+    end
+    
+    Asset -->|Metrics| Prometheus
+    Token -->|Metrics| Prometheus
+    Fabric -->|Metrics| Prometheus
+    
+    Prometheus -->|Query| Grafana
+    Prometheus -->|Alerts| AlertManager
+    
+    AlertManager -->|Notifications| Slack
+    AlertManager -->|Notifications| Email
+    AlertManager -->|Incidents| PagerDuty
+```
+
+##### 8.2.1.6 Implementation Notes
+
+- **Metrics Collection**:
+  - Use client libraries for Prometheus
+  - Implement custom metrics for business logic
+  - Optimize sampling rate
+  - Configure retention policy
+  - Ensure audit logs are stored securely and immutably
+
+- **Audit Log Management**:
+  - Store audit logs in separate system (Elasticsearch/OpenSearch)
+  - Configure retention policy for audit logs (minimum 7 years)
+  - Implement log rotation and archival
+  - Encrypt audit log data
+  - Regular backup of audit logs
+  - Alert on unusual metadata or state changes
+  - Dashboard for monitoring audit log volume and patterns
 
 ### 8.3 Deployment Plan
 * Phase 1: Core services

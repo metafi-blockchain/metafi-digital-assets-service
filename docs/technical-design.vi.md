@@ -4,18 +4,47 @@
 
 ### 1.1 Kiến Trúc Tổng Quan
 
-### 1.1 High-Level Architecture
-
 ```mermaid
 graph TD
-    Client[Client Application] --> Token[Token Service gRPC]
-    Client --> Auth[Auth Service gRPC]
-    Client --> DID[DID Service gRPC]
-    Token --> Fabric[Fabric Network]
-    DID --> Fabric
-    Auth --> Fabric
-    Token --> DB[(Database)]
-    Token --> Storage[(IPFS/MinIO)]
+    subgraph "Client Layer"
+        Web[Web App]
+        Mobile[Mobile App]
+        API[API Client]
+    end
+
+    subgraph "Middleware Layer"
+        Gateway[API Gateway]
+        AuthN[AuthN Service]
+        AuthZ[AuthZ Service]
+    end
+
+    subgraph "Application Layer"
+        Asset[Asset Service]
+        Token[Token Service]
+    end
+
+    subgraph "Blockchain Layer"
+        Fabric[Fabric Network]
+    end
+
+    Web --> Gateway
+    Mobile --> Gateway
+    API --> Gateway
+
+    Gateway --> AuthN
+    Gateway --> AuthZ
+    Gateway --> Asset
+
+    AuthN --> Asset
+    AuthZ --> Asset
+
+    Asset --> Token
+    Token --> Fabric
+
+    %% Interface Labels
+    Gateway -.->|"Client ↔ Gateway"| Asset
+    Asset -.->|"Asset ↔ Token Service"| Token
+    Token -.->|"Token ↔ Fabric"| Fabric
 ```
 
 ### 1.2 Tổng Quan Thành Phần
@@ -26,6 +55,16 @@ graph TD
   * Bảng điều khiển quản trị
   * Tích hợp client gRPC
 
+* **Dịch Vụ Tài Sản (Asset Service)**
+  * Máy chủ gRPC
+  * Quản lý metadata tài sản
+  * Xác thực DID chủ sở hữu
+  * Quản lý vòng đời tài sản
+  * Xử lý từ chối và yêu cầu sửa đổi
+  * Quản lý tài sản phân đoạn
+  * Ghi log audit
+  * Streaming thời gian thực
+
 * **Dịch Vụ Token**
   * Máy chủ gRPC
   * Quản lý vòng đời token
@@ -33,6 +72,8 @@ graph TD
   * Quản lý metadata tài sản
   * Quản lý sự kiện
   * Streaming thời gian thực
+  * Hỗ trợ tài sản phân đoạn
+  * Tích hợp marketplace
 
 * **Dịch Vụ Xác Thực**
   * Máy chủ gRPC
@@ -129,6 +170,12 @@ type TokenService interface {
     TransferToken(ctx context.Context, transfer *TransferRequest) (*Transaction, error)
     BurnToken(ctx context.Context, burn *BurnRequest) (*Transaction, error)
     
+    // Quản Lý Tài Sản Phân Đoạn
+    CreateFraction(ctx context.Context, fraction *FractionRequest) (*Fraction, error)
+    TransferFraction(ctx context.Context, transfer *FractionTransferRequest) (*Transaction, error)
+    GetFractionBalance(ctx context.Context, wallet string) (*FractionBalance, error)
+    DistributeProfit(ctx context.Context, distribution *ProfitDistributionRequest) error
+    
     // Thao Tác Truy Vấn
     GetTokenBalance(ctx context.Context, wallet string) (*Balance, error)
     GetTransactionHistory(ctx context.Context, filters *QueryFilters) ([]*Transaction, error)
@@ -145,6 +192,8 @@ type tokenServiceImpl struct {
     cache       *redis.Client
     logger      *zap.Logger
     grpcServer  *grpc.Server
+    metrics     *Metrics
+    auditLogger *AuditLogger
 }
 
 // Asset đại diện cho tài sản số
@@ -154,8 +203,21 @@ type Asset struct {
     TokenType   string          `json:"token_type"`
     Amount      decimal.Decimal `json:"amount"`
     Metadata    json.RawMessage `json:"metadata"`
+    State       string          `json:"state"`
     CreatedAt   time.Time       `json:"created_at"`
     UpdatedAt   time.Time       `json:"updated_at"`
+}
+
+// Fraction đại diện cho phần tài sản phân đoạn
+type Fraction struct {
+    ID              string          `json:"id"`
+    AssetID         string          `json:"asset_id"`
+    OwnerID         string          `json:"owner_id"`
+    Amount          decimal.Decimal `json:"amount"`
+    TotalFractions  int            `json:"total_fractions"`
+    OwnershipType   string          `json:"ownership_type"`
+    CreatedAt       time.Time       `json:"created_at"`
+    UpdatedAt       time.Time       `json:"updated_at"`
 }
 
 // Transaction đại diện cho giao dịch token
@@ -172,6 +234,21 @@ type Transaction struct {
 
 // EventCallback là kiểu hàm để xử lý sự kiện token
 type EventCallback func(event *TokenEvent) error
+
+// AuditLogger xử lý ghi log audit
+type AuditLogger struct {
+    logger *zap.Logger
+    db     *sql.DB
+}
+
+// Metrics quản lý metrics hệ thống
+type Metrics struct {
+    OperationDuration *prometheus.HistogramVec
+    OperationErrors   *prometheus.CounterVec
+    TokenCreation     *prometheus.CounterVec
+    TokenTransfers    *prometheus.CounterVec
+    FractionOperations *prometheus.CounterVec
+}
 ```
 
 #### 3.1.2 Schema Cơ Sở Dữ Liệu
@@ -185,8 +262,22 @@ CREATE TABLE tokens (
     token_type VARCHAR(50) NOT NULL,
     amount DECIMAL NOT NULL,
     metadata JSONB,
+    state VARCHAR(50) NOT NULL,
     created_at TIMESTAMP NOT NULL,
     updated_at TIMESTAMP NOT NULL
+);
+
+-- Bảng Fractions
+CREATE TABLE fractions (
+    id UUID PRIMARY KEY,
+    asset_id UUID NOT NULL,
+    owner_id UUID NOT NULL,
+    amount DECIMAL NOT NULL,
+    total_fractions INTEGER NOT NULL,
+    ownership_type VARCHAR(50) NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL,
+    FOREIGN KEY (asset_id) REFERENCES tokens(id)
 );
 
 -- Bảng Transactions
@@ -198,6 +289,23 @@ CREATE TABLE transactions (
     amount DECIMAL NOT NULL,
     transaction_type VARCHAR(50) NOT NULL,
     status VARCHAR(50) NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    FOREIGN KEY (token_id) REFERENCES tokens(id)
+);
+
+-- Bảng Audit Logs
+CREATE TABLE audit_logs (
+    id UUID PRIMARY KEY,
+    trace_id VARCHAR(255) NOT NULL,
+    service VARCHAR(50) NOT NULL,
+    operation VARCHAR(50) NOT NULL,
+    level VARCHAR(20) NOT NULL,
+    message TEXT NOT NULL,
+    error TEXT,
+    metadata JSONB,
+    ip_address VARCHAR(45),
+    user_agent TEXT,
+    session_id VARCHAR(255),
     created_at TIMESTAMP NOT NULL
 );
 ```
@@ -482,11 +590,20 @@ type Metrics struct {
     TokenTransfers    *prometheus.CounterVec
     TokenBalance      *prometheus.GaugeVec
     
+    // Metrics cho fraction
+    FractionCreation  *prometheus.CounterVec
+    FractionTransfers *prometheus.CounterVec
+    FractionBalance   *prometheus.GaugeVec
+    
     // Metrics cho hệ thống
     ActiveConnections *prometheus.GaugeVec
     RequestRate       *prometheus.CounterVec
     ErrorRate         *prometheus.CounterVec
     CacheHitRate      *prometheus.GaugeVec
+    
+    // Metrics cho audit
+    AuditLogVolume    *prometheus.CounterVec
+    AuditLogLatency   *prometheus.HistogramVec
 }
 
 // Khởi tạo metrics
@@ -527,6 +644,27 @@ func NewMetrics() *Metrics {
                 Help: "Số lượng kết nối đang hoạt động",
             },
             []string{"service"},
+        ),
+        FractionCreation: prometheus.NewCounterVec(
+            prometheus.CounterOpts{
+                Name: "fraction_creation_total",
+                Help: "Tổng số fraction được tạo",
+            },
+            []string{"asset_type", "status"},
+        ),
+        FractionTransfers: prometheus.NewCounterVec(
+            prometheus.CounterOpts{
+                Name: "fraction_transfers_total",
+                Help: "Tổng số giao dịch chuyển fraction",
+            },
+            []string{"status"},
+        ),
+        AuditLogVolume: prometheus.NewCounterVec(
+            prometheus.CounterOpts{
+                Name: "audit_log_volume_total",
+                Help: "Tổng số lượng log audit",
+            },
+            []string{"service", "operation", "level"},
         ),
     }
 }
@@ -611,6 +749,9 @@ type LogEvent struct {
     Message    string                 `json:"message"`
     Error      string                 `json:"error,omitempty"`
     Metadata   map[string]interface{} `json:"metadata,omitempty"`
+    IPAddress  string                 `json:"ip_address,omitempty"`
+    UserAgent  string                 `json:"user_agent,omitempty"`
+    SessionID  string                 `json:"session_id,omitempty"`
     Timestamp  time.Time             `json:"timestamp"`
 }
 
@@ -624,22 +765,29 @@ func (s *tokenServiceImpl) logEvent(level zapcore.Level, operation string, messa
         Message:    message,
         Timestamp:  time.Now(),
         Metadata:   metadata,
+        IPAddress:  s.getClientIP(),
+        UserAgent:  s.getUserAgent(),
+        SessionID:  s.getSessionID(),
     }
     
     if err != nil {
         event.Error = err.Error()
     }
     
-    switch level {
-    case zapcore.InfoLevel:
-        s.logger.Info(message, zap.Any("event", event))
-    case zapcore.ErrorLevel:
-        s.logger.Error(message, zap.Any("event", event))
-    case zapcore.WarnLevel:
-        s.logger.Warn(message, zap.Any("event", event))
-    case zapcore.DebugLevel:
-        s.logger.Debug(message, zap.Any("event", event))
+    // Ghi log vào hệ thống
+    s.logger.Log(level, message, zap.Any("event", event))
+    
+    // Ghi log audit nếu cần
+    if s.shouldAudit(level, operation) {
+        s.auditLogger.Log(event)
     }
+    
+    // Cập nhật metrics
+    s.metrics.AuditLogVolume.WithLabelValues(
+        event.Service,
+        event.Operation,
+        event.Level,
+    ).Inc()
 }
 ```
 
