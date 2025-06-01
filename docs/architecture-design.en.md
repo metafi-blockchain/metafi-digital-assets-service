@@ -37,7 +37,7 @@ graph TD
     end
 
     subgraph "Blockchain Layer"
-        Fabric["Hyperledger Fabric<br/>Token SDK"]
+        Fabric["Hyperledger Fabric<br/>Token SDK/Chaincode"]
         Indy["Hyperledger Indy<br/>ACA-Py"]
     end
 
