@@ -74,11 +74,50 @@ graph TD
 
 ### 1.2 Tổng Quan Thành Phần
 
-* **Ứng Dụng Client**
-  * Frontend web (React/Next.js)
-  * Ứng dụng di động (React Native)
-  * Bảng điều khiển quản trị
+#### 1.2.1 Client Layer
+* **Ứng Dụng Web**
+  * Frontend (React/Next.js)
+  * TypeScript
+  * Material-UI/Tailwind CSS
+  * gRPC-web client
+  * Redux/Context API
 
+* **Ứng Dụng Di Động**
+  * React Native
+  * TypeScript
+  * Native Base
+  * gRPC client
+  * Redux
+
+* **API Client**
+  * REST/gRPC client
+  * SDK cho các ngôn ngữ phổ biến
+
+#### 1.2.2 Middleware Layer
+* **API Gateway**
+  * Quản lý routing
+  * Rate limiting
+  * Load balancing
+  * API documentation (Swagger/OpenAPI)
+
+* **AuthN Service**
+  * Quản lý token JWT
+  * Quản lý phiên
+  * Xác thực đa yếu tố (MFA)
+
+* **AuthZ Service**
+  * Kiểm soát truy cập dựa trên vai trò (RBAC)
+  * Quản lý quyền
+  * Policy enforcement
+
+* **DID Middleware (ACA-Py)**
+  * Quản lý danh tính (DID)
+  * Quản lý chứng chỉ
+  * Xác thực KYC
+  * Tích hợp với Indy Agent
+  * Cấp phát MSP Identity
+
+#### 1.2.3 Application Layer
 * **Asset Service**
   * Máy chủ gRPC
   * Quản lý metadata tài sản
@@ -94,26 +133,37 @@ graph TD
   * Quản lý vòng đời token
   * Tích hợp với Fabric Network
 
-* **AuthN**
-  * Quản lý token JWT
-  * Quản lý phiên
+* **Compliance Service**
+  * Kiểm tra tuân thủ
+  * Xác thực giao dịch
+  * Quản lý rủi ro
 
-* **AuthZ**
-  * Kiểm soát truy cập dựa trên vai trò (RBAC)
-  * Quản lý quyền
-
-* **DID Service**
-  * Quản lý danh tính (DID)
-  * Quản lý chứng chỉ
-  * Tích hợp MSP
-  * Xác thực KYC
-  * Cấp phát MSP Identity
-
-* **Fabric Network**
+#### 1.2.4 Blockchain Layer
+* **Fabric Network (Token SDK)**
   * Mạng blockchain riêng
   * ChainCode
   * Tích hợp Token SDK
   * Hệ thống sự kiện
+  * Smart contract quản lý token
+
+#### 1.2.5 Storage Layer
+* **PostgreSQL Database**
+  * Lưu trữ metadata tài sản
+  * Quản lý trạng thái
+  * Audit logs
+  * Transaction history
+
+* **Redis Cache**
+  * Session management
+  * Rate limiting
+  * Temporary data storage
+  * Real-time data caching
+
+* **IPFS / MinIO**
+  * Lưu trữ metadata tài sản
+  * Asset documents
+  * Immutable storage
+  * Content addressing
 
 ## 2. Stack Công Nghệ
 
@@ -134,11 +184,11 @@ graph TD
   * Redis (session)
   * PostgreSQL
 
-* **DID Service**
-  * Golang
-  * gRPC
-  * Fabric SDK
+* **DID Middleware**
+  * Aries Cloud Agent Python (ACA-Py)
+  * Hyperledger Indy
   * PostgreSQL
+  * Redis (cache)
 
 ### 2.2 Frontend
 
