@@ -6,52 +6,67 @@
 
 ```mermaid
 graph TD
+    %% Client Layer
     subgraph "Client Layer"
         Web[Web App]
         Mobile[Mobile App]
         API[API Client]
     end
 
+    %% Middleware Layer
     subgraph "Middleware Layer"
         Gateway[API Gateway]
         AuthN[AuthN Service]
         AuthZ[AuthZ Service]
-        DID[DID Service]
+        DID[DID Middleware (ACA-Py)]
     end
 
+    %% Application Layer
     subgraph "Application Layer"
         Asset[Asset Service]
         Token[Token Service]
         Compliance[Compliance Service]
     end
 
+    %% Blockchain Layer
     subgraph "Blockchain Layer"
-        Fabric[Fabric Network]
+        Fabric[Fabric Network (Token SDK)]
     end
 
+    %% Storage Layer
     subgraph "Storage Layer"
-        DB[(Database)]
+        DB[(PostgreSQL Database)]
         Cache[(Redis Cache)]
-        Storage[(IPFS/MinIO)]
+        Storage[(IPFS / MinIO)]
     end
 
+    %% Flows from Clients
     Web --> Gateway
     Mobile --> Gateway
     API --> Gateway
 
+    %% Gateway routing
     Gateway --> AuthN
     Gateway --> AuthZ
     Gateway --> Asset
+    Gateway --> DID
 
+    %% Auth middleware interaction
     AuthN --> Asset
     AuthZ --> Asset
     DID --> Asset
 
+    %% AssetService integration
     Asset --> Compliance
     Asset --> Token
-    Token --> Fabric
-    DID --> Fabric
 
+    %% Token → Blockchain
+    Token --> Fabric
+
+    %% DID interaction with Indy (off-chain)
+    DID -->|ACA-Py API| DIDAgent[(Indy Agent)]
+
+    %% Asset data persistence
     Asset --> DB
     Asset --> Cache
     Asset --> Storage
