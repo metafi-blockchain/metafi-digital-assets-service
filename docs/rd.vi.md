@@ -47,6 +47,7 @@ graph LR
         Gateway[API Gateway]
         AuthN[AuthN Service]
         AuthZ[AuthZ Service]
+        DID[DID Service]
     end
 
     subgraph "Application Layer"
@@ -68,6 +69,7 @@ graph LR
 
     AuthN --> Asset
     AuthZ --> Asset
+    DID --> Asset
 
     Asset --> Token
     Token --> Fabric
@@ -76,6 +78,7 @@ graph LR
     Gateway -.->|"Client ↔ Gateway"| Asset
     Asset -.->|"Asset ↔ Token Service"| Token
     Token -.->|"Token ↔ Fabric"| Fabric
+    DID -.->|"DID ↔ Asset Service"| Asset
 ```
 
 #### 2.1.2 Sơ đồ chi tiết
