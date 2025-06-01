@@ -144,3 +144,47 @@ Build a digital asset management system integrated with Hyperledger Fabric block
 * Integration with Chainlink for price feeds and NAV updates
 
 *Last Updated: 31/05/2025* 
+
+graph LR
+    subgraph "Client Layer"
+        Web[Web App]
+        Mobile[Mobile App]
+        API[API Client]
+    end
+
+    subgraph "Middleware Layer"
+        Gateway[API Gateway]
+        AuthN[AuthN Service]
+        AuthZ[AuthZ Service]
+        DID[DID Service]
+    end
+
+    subgraph "Application Layer"
+        Asset[Asset Service]
+        Token[Token Service]
+    end
+
+    subgraph "Blockchain Layer"
+        Fabric[Fabric Network]
+    end
+
+    Web --> Gateway
+    Mobile --> Gateway
+    API --> Gateway
+
+    Gateway --> AuthN
+    Gateway --> AuthZ
+    Gateway --> Asset
+
+    AuthN --> Asset
+    AuthZ --> Asset
+    DID --> Asset
+
+    Asset --> Token
+    Token --> Fabric
+
+    %% Interface Labels
+    Gateway -.->|"Client ↔ Gateway"| Asset
+    Asset -.->|"Asset ↔ Token Service"| Token
+    Token -.->|"Token ↔ Fabric"| Fabric
+    DID -.->|"DID ↔ Asset Service"| Asset 

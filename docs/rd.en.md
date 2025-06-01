@@ -34,27 +34,34 @@ Build a digital asset management system (Digital Asset Service) integrated with 
 ### 2.1 High-Level Architecture
 
 ```mermaid
-graph LR
+graph TD
     subgraph "Client Layer"
         Web[Web App]
         Mobile[Mobile App]
         API[API Client]
     end
 
-    subgraph "Middleware Layer"
+    subgraph "Gateway Layer"
         Gateway[API Gateway]
+    end
+
+    subgraph "Service Layer"
         AuthN[AuthN Service]
         AuthZ[AuthZ Service]
         DID[DID Service]
-    end
-
-    subgraph "Application Layer"
         Asset[Asset Service]
         Token[Token Service]
     end
 
     subgraph "Blockchain Layer"
         Fabric[Fabric Network]
+    end
+
+    subgraph "Storage Layer"
+        AssetDB[(Asset Database)]
+        TokenDB[(Token Database)]
+        Cache[(Redis Cache)]
+        Storage[(IPFS/MinIO)]
     end
 
     Web --> Gateway
@@ -65,18 +72,19 @@ graph LR
     Gateway --> AuthZ
     Gateway --> Asset
 
-    AuthN --> Asset
-    AuthZ --> Asset
-    DID --> Asset
-
+    Asset --> AuthN
+    Asset --> AuthZ
+    Asset --> DID
     Asset --> Token
-    Token --> Fabric
 
-    %% Interface Labels
-    Gateway -.->|"Client ↔ Gateway"| Asset
-    Asset -.->|"Asset ↔ Token Service"| Token
-    Token -.->|"Token ↔ Fabric"| Fabric
-    DID -.->|"DID ↔ Asset Service"| Asset
+    Token --> Fabric
+    DID --> Fabric
+
+    Asset --> AssetDB
+    Asset --> Cache
+    Asset --> Storage
+
+    Token --> TokenDB
 ```
 
 ### 2.2 Detailed Architecture
