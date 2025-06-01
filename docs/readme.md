@@ -1,0 +1,5 @@
+- RD: Software Requirements Specification
+- Business analysis.
+- technical design
+- design diagram (sequence + architecture) 
+- Architecture design

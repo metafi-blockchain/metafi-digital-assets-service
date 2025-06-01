@@ -84,6 +84,32 @@ graph TD
 * Transaction history caching
 * State caching
 
+### 2.3 Mở rộng hỗ trợ các chuẩn token
+
+#### 2.3.1 Soulbound Token (SBT)
+* Token không thể chuyển nhượng, gắn vĩnh viễn với một DID (chứng chỉ, danh hiệu, KYC...)
+* Hỗ trợ mint, revoke/burn, lưu trữ metadata chứng chỉ
+* API gợi ý: mint-soulbound, revoke, kiểm tra trạng thái SBT
+
+#### 2.3.2 Fractional NFT
+* Chia nhỏ quyền sở hữu NFT thành nhiều phần nhỏ (fractional token, thường dựa trên ERC20)
+* Hỗ trợ fractionalize, transfer/trade, redeem NFT gốc
+* Quản lý mapping giữa NFT gốc và fractional token, lock NFT khi fractionalize
+
+#### 2.3.3 ERC4626 (Vault/DeFi)
+* Chuẩn vault cho DeFi: gửi/rút tài sản vào vault, nhận share token đại diện
+* Hỗ trợ deposit, withdraw, reward calculation, minh bạch phần thưởng
+* Tích hợp smart contract chuẩn ERC4626
+
+#### 2.3.4 ERC777 (Token nâng cao)
+* Chuẩn token nâng cấp ERC20, hỗ trợ operator, hooks (callback), gửi dữ liệu kèm giao dịch
+* Hỗ trợ mint, operator, send-with-data, kiểm tra bảo mật khi dùng operator/hook
+
+#### 2.3.5 Chuẩn token của blockchain khác (Multi-chain)
+* Hỗ trợ các chuẩn token ngoài Ethereum: BEP20 (BSC), SPL (Solana), TRC20 (Tron), CW20 (Cosmos)...
+* Hỗ trợ mint/burn/transfer cho từng chuẩn, cross-chain bridge, module adapter cho từng blockchain
+* Quản lý mapping token giữa các chain, đảm bảo bảo mật khi tích hợp bridge
+
 ## 3. Yêu cầu chức năng
 
 ### 3.1 Token Management
@@ -749,5 +775,3 @@ enum AssetIntegrationError {
 * Yêu cầu phê duyệt từ admin
 * Ghi log đầy đủ quá trình rollback
 * Thông báo cho các bên liên quan
-
-*Cập nhật: 20/03/2024* 
