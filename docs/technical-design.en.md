@@ -30,6 +30,7 @@ graph TD
     %% Blockchain Layer
     subgraph "Blockchain Layer"
         Fabric[Fabric Network<br/>Token SDK]
+        Indy[Hyperledger Indy]
     end
 
     %% Storage Layer
@@ -62,7 +63,7 @@ graph TD
     Token --> Fabric
 
     %% DID interaction with Indy (off-chain)
-    DID -->|ACA-Py API| DIDAgent[(Indy Agent)]
+    DID -->|ACA-Py API| DIDAgent[(Indy Agent)] --> Indy
 
     %% Asset data persistence
     Asset --> DB
