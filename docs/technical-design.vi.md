@@ -18,7 +18,7 @@ graph TD
         Gateway[API Gateway]
         AuthN[AuthN Service]
         AuthZ[AuthZ Service]
-        DID[DID Middleware (ACA-Py)]
+        DID[DID Middleware<br/>ACA-Py]
     end
 
     %% Application Layer
@@ -30,12 +30,12 @@ graph TD
 
     %% Blockchain Layer
     subgraph "Blockchain Layer"
-        Fabric[Fabric Network (Token SDK)]
+        Fabric[Fabric Network<br/>Token SDK]
     end
 
     %% Storage Layer
     subgraph "Storage Layer"
-        DB[(PostgreSQL Database)]
+        DB[(PostgreSQL<br/>Database)]
         Cache[(Redis Cache)]
         Storage[(IPFS / MinIO)]
     end
