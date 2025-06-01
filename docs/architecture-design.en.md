@@ -29,7 +29,7 @@ graph TD
         Gateway[Kong API Gateway]
         AuthN[AuthN Service]
         AuthZ[AuthZ Service]
-        DID[DID Middleware (ACA-Py)]
+        DID[DID Middleware ACA-Py]
     end
 
     subgraph "Application Layer"
