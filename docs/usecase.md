@@ -19,34 +19,43 @@
 ## Use Case Diagram
 
 ```mermaid
-%% Use Case Diagram for Digital Asset Management System
+%% Use Case Diagram (simulated with graph TD)
+graph TD
+    AssetOwner([Asset Owner])
+    SystemAdmin([System Admin])
+    Approver([Approver])
+    User([User])
+    Auditor([Auditor])
+    ComplianceService([Compliance Service])
+    Recipient([Recipient])
 
-%% Actors: Asset Owner, System Admin, Approver, User, Auditor, Compliance Service, Recipient
+    UC1((Asset Creation and Update))
+    UC2((Asset Submission for Approval))
+    UC3((Asset Approval/Reject/Modify))
+    UC4((Asset Tokenization))
+    UC5((Asset Transfer))
+    UC6((User Registration & Auth))
+    UC7((Role & Permission Management))
+    UC8((Audit Logging & Monitoring))
+    UC9((Compliance Validation))
 
-usecase
-    actor AssetOwner as "Asset Owner"
-    actor SystemAdmin as "System Admin"
-    actor Approver as "Approver"
-    actor User as "User"
-    actor Auditor as "Auditor"
-    actor ComplianceService as "Compliance Service"
-    actor Recipient as "Recipient"
+    AssetOwner -- Uses --> UC1
+    AssetOwner -- Uses --> UC2
+    AssetOwner -- Uses --> UC4
+    AssetOwner -- Uses --> UC5
+    AssetOwner -- Uses --> UC9
 
-    AssetOwner -- (Asset Creation and Update)
-    AssetOwner -- (Asset Submission for Approval)
-    AssetOwner -- (Asset Tokenization)
-    AssetOwner -- (Asset Transfer)
+    SystemAdmin -- Uses --> UC3
+    SystemAdmin -- Uses --> UC7
+    SystemAdmin -- Uses --> UC8
 
-    SystemAdmin -- (Asset Approval/Reject/Modify)
-    Approver -- (Asset Approval/Reject/Modify)
-    SystemAdmin -- (Role & Permission Management)
-    SystemAdmin -- (Audit Logging & Monitoring)
+    Approver -- Uses --> UC3
 
-    User -- (User Registration & Auth)
-    Auditor -- (Audit Logging & Monitoring)
-    ComplianceService -- (Compliance Validation)
-    AssetOwner -- (Compliance Validation)
-    System -- (Audit Logging & Monitoring)
-    System -- (Compliance Validation)
-    Recipient -- (Asset Transfer)
+    User -- Uses --> UC6
+
+    Auditor -- Uses --> UC8
+
+    ComplianceService -- Uses --> UC9
+
+    Recipient -- Uses --> UC5
 ``` 
