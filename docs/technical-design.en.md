@@ -817,4 +817,16 @@ output {
 }
 ```
 
+## 5. Future Scope
+
+The following features/modules will be considered for future development phases:
+
+- **Profit Distribution/Dividend**
+- **Voting / Ownership-based Governance**
+- **Compliance Service**
+- **Order Service** (order book, matching, on-exchange trading)
+- **Marketplace** (asset trading, fraction trading, order placement)
+
+These topics will be detailed in future document updates as the system expands.
+
 *Last Updated: 31/05/2025* 

@@ -231,7 +231,6 @@
 * Giám sát thời gian thực
 * Quản lý rủi ro tự động
 
-*Cập nhật: 31/05/2025*
 
 ---
 
@@ -247,7 +246,6 @@ Các chức năng/phân hệ sau đây sẽ được xem xét phát triển ở 
 
 Các nội dung này sẽ được bổ sung chi tiết trong các bản cập nhật tài liệu tiếp theo khi hệ thống mở rộng phạm vi.
 
-*Cập nhật: 31/05/2025* 
 
 	•	🔜 Gợi ý bước tiếp theo: Viết thêm tài liệu kỹ thuật tương ứng như:
 	•	DID Integration Design

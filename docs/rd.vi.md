@@ -745,8 +745,6 @@ graph TD
 - Phase 3: Trading features
 - Phase 4: Advanced features
 
-*Cập nhật: 31/05/2025*
-
 ## 9. Phần mở rộng (Future Scope)
 
 Các chức năng/phân hệ sau đây sẽ được xem xét phát triển ở các giai đoạn tiếp theo:

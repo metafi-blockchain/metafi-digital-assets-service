@@ -467,7 +467,6 @@ func (s *serviceImpl) logEvent(level zapcore.Level, operation string, message st
 - Quản lý cuộc bỏ phiếu
 - Theo dõi kết quả
 
-*Cập nhật: 31/05/2025*
 
 ---
 

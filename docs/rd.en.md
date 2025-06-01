@@ -9,6 +9,7 @@
 6. [User Roles and Permissions](#6-user-roles-and-permissions)
 7. [Business Processes](#7-business-processes)
 8. [Deployment and Operations](#8-deployment-and-operations)
+9. [Future Scope](#9-future-scope)
 
 ## 1. Overview
 
@@ -195,6 +196,42 @@ sequenceDiagram
     
     Asset-->>User: Transfer Confirmed
 ```
+
+## 3. Functional Requirements
+
+### 3.1 Asset Management
+- Create and update asset information
+- Tokenize assets
+- Manage ownership
+- Track asset status
+- Handle rejection and modification requests:
+  - Permissioned rejection/modification
+  - Manage reasons for rejection/modification
+  - Track number of rejections and modifications
+  - Automatic notifications to stakeholders
+  - Store change and feedback history
+- Fractional asset management:
+  - Split assets into smaller fractions
+  - Map each fraction to owner DID
+  - Track ownership ratio for each DID
+  - Support individual fraction transfers
+
+### 3.2 Token Management
+- Mint tokens
+- Burn tokens
+- Transfer tokens
+- Manage balances
+- Transaction history
+
+### 3.3 User Management
+- Registration and authentication
+- Access control
+- Identity management
+- KYC/AML
+
+### 3.4 Transactions
+- Execute asset transfer transactions
+- Transaction confirmation
 
 ## 5. Service Interfaces
 
@@ -680,7 +717,7 @@ sequenceDiagram
     System-->>Owner: Completion notification
 ```
 
-### 7.2 Trading Process
+### 7.2 Transaction Process
 ```mermaid
 sequenceDiagram
     participant Buyer
@@ -878,5 +915,17 @@ graph TD
 * Phase 2: Token management
 * Phase 3: Trading features
 * Phase 4: Advanced features
+
+## 9. Future Scope
+
+The following features/modules will be considered for future development phases:
+
+- **Profit Distribution/Dividend**
+- **Voting / Ownership-based Governance**
+- **Compliance Service**
+- **Order Service** (order book, matching, on-exchange trading)
+- **Marketplace** (asset trading, fraction trading, order placement)
+
+These topics will be detailed in future document updates as the system expands.
 
 *Last Updated: 31/05/2025* 
