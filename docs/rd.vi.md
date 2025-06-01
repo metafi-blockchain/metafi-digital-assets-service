@@ -275,12 +275,6 @@ sequenceDiagram
   - Mapping mỗi fraction với DID của chủ sở hữu
   - Theo dõi tỷ lệ sở hữu của mỗi DID
   - Hỗ trợ chuyển nhượng từng fraction riêng lẻ
-  - Quản lý quyền biểu quyết dựa trên tỷ lệ sở hữu
-  - Tự động tính toán và phân phối lợi nhuận theo tỷ lệ sở hữu
-  - Hỗ trợ mua bán fraction trên marketplace
-  - Lưu trữ lịch sử thay đổi sở hữu của từng fraction
-  - Kiểm soát số lượng fraction tối thiểu/tối đa cho mỗi DID
-  - Hỗ trợ gộp (merge) và tách (split) fraction
 
 ### 3.2 Quản lý token
 - Phát hành token (mint)
@@ -296,198 +290,8 @@ sequenceDiagram
 - KYC/AML
 
 ### 3.4 Giao dịch
-- Đặt lệnh mua/bán
-- Khớp lệnh
-- Thực hiện giao dịch
+- Thực hiện giao dịch chuyển nhượng tài sản
 - Xác nhận giao dịch
-
-### 3.5 Quản lý tài sản phân đoạn
-
-#### 3.5.1 Chức năng chính
-- **Tạo và quản lý fraction**:
-  - Định nghĩa số lượng fraction tối đa cho mỗi tài sản
-  - Thiết lập giá trị tối thiểu cho mỗi fraction
-  - Tự động tính toán giá trị fraction dựa trên tổng giá trị tài sản
-  - Hỗ trợ nhiều loại fraction (cổ phần, quyền sở hữu, quyền sử dụng...)
-
-- **Mapping DID với fraction**:
-  - Liên kết DID với từng fraction cụ thể
-  - Theo dõi lịch sử sở hữu của mỗi fraction
-  - Hỗ trợ nhiều DID sở hữu cùng một fraction
-  - Quản lý quyền biểu quyết dựa trên tỷ lệ sở hữu
-
-- **Giao dịch fraction**:
-  - Hỗ trợ mua bán từng fraction riêng lẻ
-  - Tự động cập nhật mapping DID khi có giao dịch
-  - Kiểm tra và xác thực quyền sở hữu trước khi giao dịch
-  - Hỗ trợ đặt lệnh mua/bán fraction trên marketplace
-
-- **Quản lý lợi nhuận**:
-  - Tự động tính toán lợi nhuận cho mỗi fraction
-  - Phân phối lợi nhuận theo tỷ lệ sở hữu
-  - Hỗ trợ nhiều loại lợi nhuận (cổ tức, tiền thuê, lãi...)
-  - Tự động cập nhật số dư cho chủ sở hữu fraction
-
-#### 3.5.2 Quy trình nghiệp vụ
-
-```mermaid
-sequenceDiagram
-    participant Owner
-    participant AssetService
-    participant DIDService
-    participant TokenService
-    participant Blockchain
-
-    Owner->>AssetService: Yêu cầu chia nhỏ tài sản (asset_id, config)
-    AssetService->>DIDService: Xác thực DID chủ sở hữu
-    DIDService-->>AssetService: DID hợp lệ
-
-    AssetService->>AssetService: Tính toán số lượng fraction, lưu metadata
-    AssetService->>TokenService: Yêu cầu phát hành fraction token
-
-    TokenService->>Blockchain: Triển khai token (mint/split)
-    Blockchain-->>TokenService: Success
-
-    TokenService->>AssetService: Trả lại token_ids, tx_hash
-    AssetService->>AssetService: Mapping fraction-token ↔ DID
-
-    AssetService-->>Owner: Phản hồi thành công (fraction_token_ids, tx_hash)
-```
-
-#### 3.5.3 Interface gRPC
-
-```protobuf
-service FractionalAssetService {
-    // Tạo fraction mới
-    rpc CreateFraction(CreateFractionRequest) returns (CreateFractionResponse);
-    
-    // Cập nhật mapping DID
-    rpc UpdateDIDMapping(UpdateDIDMappingRequest) returns (UpdateDIDMappingResponse);
-    
-    // Lấy thông tin fraction
-    rpc GetFractionInfo(GetFractionInfoRequest) returns (GetFractionInfoResponse);
-    
-    // Giao dịch fraction
-    rpc TransferFraction(TransferFractionRequest) returns (TransferFractionResponse);
-    
-    // Tính toán và phân phối lợi nhuận
-    rpc DistributeProfit(DistributeProfitRequest) returns (DistributeProfitResponse);
-}
-
-message CreateFractionRequest {
-    string asset_id = 1;
-    int32 total_fractions = 2;
-    double min_fraction_value = 3;
-    string owner_did = 4;
-    map<string, string> metadata = 5;
-}
-
-message CreateFractionResponse {
-    string fraction_id = 1;
-    repeated string fraction_token_ids = 2;
-    string status = 3;
-    string transaction_hash = 4;
-}
-
-message UpdateDIDMappingRequest {
-    string fraction_id = 1;
-    string did = 2;
-    double ownership_percentage = 3;
-    string action = 4; // ADD, REMOVE, UPDATE
-}
-
-message UpdateDIDMappingResponse {
-    bool success = 1;
-    string message = 2;
-    string transaction_hash = 3;
-}
-
-message GetFractionInfoRequest {
-    string fraction_id = 1;
-    string did = 2;
-}
-
-message GetFractionInfoResponse {
-    string fraction_id = 1;
-    double total_value = 2;
-    double ownership_percentage = 3;
-    repeated string owner_dids = 4;
-    map<string, double> did_ownership = 5;
-    string status = 6;
-}
-
-message TransferFractionRequest {
-    string fraction_id = 1;
-    string from_did = 2;
-    string to_did = 3;
-    double amount = 4;
-}
-
-message TransferFractionResponse {
-    bool success = 1;
-    string transaction_hash = 2;
-    string message = 3;
-}
-
-message DistributeProfitRequest {
-    string fraction_id = 1;
-    double total_profit = 2;
-    string profit_type = 3; // DIVIDEND, RENTAL, INTEREST
-}
-
-message DistributeProfitResponse {
-    bool success = 1;
-    map<string, double> did_profit = 2;
-    string transaction_hash = 3;
-}
-```
-
-#### 3.5.4 Yêu cầu bảo mật
-- Xác thực DID cho mọi thao tác với fraction
-- Kiểm tra quyền sở hữu trước khi cho phép giao dịch
-- Mã hóa thông tin mapping DID-fraction
-- Ghi log đầy đủ mọi thay đổi sở hữu
-- Kiểm tra giới hạn sở hữu cho mỗi DID
-- Xác thực đa chữ ký cho các giao dịch quan trọng
-
-#### 3.5.5 Monitoring
-- Theo dõi số lượng fraction đang lưu hành
-- Giám sát tỷ lệ sở hữu của các DID
-- Theo dõi khối lượng giao dịch fraction
-- Alert khi có thay đổi bất thường về sở hữu
-- Báo cáo phân tích xu hướng giao dịch fraction
-
-## 4. Yêu cầu phi chức năng
-
-### 4.1 Hiệu năng
-- Thời gian phản hồi trung bình mỗi API < 500ms
-- Hệ thống xử lý đồng thời > 1000 yêu cầu/giây cho metadata và luồng nghiệp vụ tài sản
-- Độ trễ cập nhật trạng thái tài sản sau khi gọi Token Service < 2s
-
-### 4.2 Bảo mật
-- Mã hóa dữ liệu end-to-end (TLS/mTLS giữa các service)
-- Xác thực đa yếu tố (MFA) cho người dùng quản trị
-- Kiểm soát truy cập theo RBAC/ABAC (dựa trên vai trò và DID)
-- Ghi nhật ký hành vi quan trọng (audit logging) liên quan đến:
-  - Tạo/cập nhật/xóa tài sản
-  - Kích hoạt token hóa
-  - Phê duyệt tài sản
-  - Cập nhật metadata tài sản
-  - Thay đổi trạng thái tài sản
-  - Từ chối và yêu cầu sửa đổi tài sản
-- Kiểm tra quyền từ AuthZ trước khi thao tác trên tài sản
-
-### 4.3 Khả năng mở rộng
-- Có thể mở rộng độc lập Asset Service bằng Kubernetes Horizontal Scaling
-- Load balancing phía API Gateway
-- Tối ưu luồng `event-driven` khi gọi Token Service để giảm coupling
-- Có thể tích hợp message broker (Kafka/NATS) để xử lý async: audit, cập nhật trạng thái tài sản khi token hóa xong
-
-### 4.4 Độ tin cậy
-- Hệ thống đảm bảo High Availability (HA)
-- Tự động khôi phục khi gặp lỗi (pod restart, liveness probe)
-- Backup định kỳ metadata tài sản (DB + IPFS/MinIO)
-- Hỗ trợ Disaster Recovery (DR)
 
 ## 5. Interface giữa các Service
 
@@ -707,20 +511,13 @@ enum ComplianceStatus {
 sequenceDiagram
     participant Owner
     participant AssetService
-    participant ComplianceService
     participant TokenService
     participant Blockchain
 
     Owner->>AssetService: Yêu cầu token hóa tài sản (asset_id, metadata)
-    AssetService->>ComplianceService: Gửi thông tin để kiểm tra tuân thủ
-
-    ComplianceService->>ComplianceService: Xử lý KYC/AML, xác minh pháp lý
-    ComplianceService-->>AssetService: Phê duyệt token hóa
-
     AssetService->>TokenService: Yêu cầu tạo token (asset_id, owner_did, total_supply)
     TokenService->>Blockchain: Triển khai token (mint hoặc issue)
     Blockchain-->>TokenService: Xác nhận thành công (tx_hash)
-
     TokenService-->>AssetService: Trả kết quả (token_id, tx_hash)
     AssetService-->>Owner: Thông báo hoàn tất token hóa (token_id, status)
 ```

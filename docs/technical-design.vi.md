@@ -25,7 +25,6 @@ graph TD
     subgraph "Application Layer"
         Asset[Asset Service]
         Token[Token Service]
-        Compliance[Compliance Service]
     end
 
     %% Blockchain Layer
@@ -57,7 +56,6 @@ graph TD
     DID --> Asset
 
     %% AssetService integration
-    Asset --> Compliance
     Asset --> Token
 
     %% Token → Blockchain
@@ -124,7 +122,6 @@ graph TD
   * Xác thực DID chủ sở hữu
   * Quản lý vòng đời tài sản
   * Xử lý từ chối và yêu cầu sửa đổi
-  * Quản lý tài sản phân đoạn
   * Ghi log audit
   * Streaming thời gian thực
 
@@ -132,11 +129,6 @@ graph TD
   * Giao tiếp qua gRPC
   * Quản lý vòng đời token
   * Tích hợp với Fabric Network
-
-* **Compliance Service**
-  * Kiểm tra tuân thủ
-  * Xác thực giao dịch
-  * Quản lý rủi ro
 
 #### 1.2.4 Blockchain Layer
 * **Fabric Network (Token SDK)**
@@ -229,9 +221,9 @@ graph TD
 #### 3.1.1 Vai Trò Chính
 
 - Quản lý metadata tài sản
-- Quản lý vòng đời tài sản: tạo, cập nhật, token hóa, phân đoạn
+- Quản lý vòng đời tài sản: tạo, cập nhật, token hóa
 - Kiểm tra quyền sở hữu qua DID
-- Tích hợp ComplianceService và TokenService
+- Tích hợp với Token Service
 - Cung cấp API/gRPC cho frontend và các dịch vụ khác
 
 #### 3.1.2 Giao Diện Dịch Vụ
@@ -245,9 +237,8 @@ interface AssetService {
     GetAsset(ctx context.Context, id string) (*Asset, error)
     ListAssets(ctx context.Context, filter *AssetFilter) ([]*Asset, error)
     
-    // Token hóa và phân đoạn
+    // Token hóa
     TokenizeAsset(ctx context.Context, req *TokenizeAssetRequest) (*Asset, error)
-    CreateFraction(ctx context.Context, req *FractionRequest) (*FractionResponse, error)
     TransferOwnership(ctx context.Context, req *TransferOwnershipRequest) error
     
     // Quản lý trạng thái
@@ -255,7 +246,7 @@ interface AssetService {
     RejectAsset(ctx context.Context, req *RejectRequest) error
     RequestModification(ctx context.Context, req *ModificationRequest) error
     
-    // Quản lý sự kiện
+    // Sự kiện
     SubscribeToEvents(callback EventCallback) error
     ProcessEvents(event *AssetEvent) error
 }
@@ -271,13 +262,6 @@ type Asset struct {
     Metadata    json.RawMessage `json:"metadata"`
     CreatedAt   time.Time       `json:"created_at"`
     UpdatedAt   time.Time       `json:"updated_at"`
-}
-
-type FractionResponse struct {
-    AssetID        string                     `json:"asset_id"`
-    TotalFractions int                        `json:"total_fractions"`
-    FractionTokens []string                   `json:"fraction_token_ids"`
-    OwnerMapping   map[string]float64         `json:"ownership_map"`
 }
 ```
 
@@ -306,18 +290,6 @@ CREATE TABLE asset_events (
     created_at TIMESTAMP NOT NULL
 );
 
--- Bảng Asset Fractions
-CREATE TABLE asset_fractions (
-    id UUID PRIMARY KEY,
-    asset_id UUID REFERENCES assets(id),
-    token_id TEXT NOT NULL,
-    owner_did TEXT NOT NULL,
-    amount DECIMAL NOT NULL,
-    total_fractions INTEGER NOT NULL,
-    created_at TIMESTAMP NOT NULL,
-    updated_at TIMESTAMP NOT NULL
-);
-
 -- Bảng Asset Audit Logs
 CREATE TABLE asset_audit_logs (
     id UUID PRIMARY KEY,
@@ -344,11 +316,6 @@ service TokenService {
     rpc CreateToken(CreateTokenRequest) returns (Token);
     rpc TransferToken(TransferRequest) returns (Transaction);
     rpc BurnToken(BurnRequest) returns (Transaction);
-    
-    // Quản lý fraction
-    rpc CreateFraction(CreateFractionRequest) returns (Fraction);
-    rpc TransferFraction(TransferFractionRequest) returns (Transaction);
-    rpc GetFractionBalance(BalanceRequest) returns (Balance);
     
     // Truy vấn
     rpc GetTokenBalance(BalanceRequest) returns (Balance);
@@ -468,5 +435,27 @@ func (s *serviceImpl) logEvent(level zapcore.Level, operation string, message st
     ).Inc()
 }
 ```
+
+## 4. Tính Năng Mở Rộng (Future Scope)
+
+### 4.1 Compliance Service
+- Kiểm tra tuân thủ
+- Xác thực giao dịch
+- Quản lý rủi ro
+
+### 4.2 Order Service
+- Quản lý sổ lệnh
+- Khớp lệnh
+- Quản lý giao dịch
+
+### 4.3 Phân Phối Lợi Nhuận
+- Tính toán lợi tức tự động
+- Lập lịch phân phối
+- Xử lý thanh toán
+
+### 4.4 Quản Lý Quyền Biểu Quyết
+- Tính toán quyền biểu quyết
+- Quản lý cuộc bỏ phiếu
+- Theo dõi kết quả
 
 *Cập nhật: 31/05/2025* 
