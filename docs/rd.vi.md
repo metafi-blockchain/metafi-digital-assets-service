@@ -515,15 +515,23 @@ enum ComplianceStatus {
 sequenceDiagram
     participant Owner
     participant AssetService
+    participant DIDService
+    participant ComplianceService
     participant TokenService
     participant Blockchain
 
-    Owner->>AssetService: Yêu cầu token hóa tài sản (asset_id, metadata)
-    AssetService->>TokenService: Yêu cầu tạo token (asset_id, owner_did, total_supply)
-    TokenService->>Blockchain: Triển khai token (mint hoặc issue)
-    Blockchain-->>TokenService: Xác nhận thành công (tx_hash)
-    TokenService-->>AssetService: Trả kết quả (token_id, tx_hash)
-    AssetService-->>Owner: Thông báo hoàn tất token hóa (token_id, status)
+    Owner->>AssetService: Gửi yêu cầu token hóa
+    AssetService->>DIDService: Kiểm tra KYC chủ sở hữu
+    DIDService-->>AssetService: Đã xác thực KYC
+
+    AssetService->>ComplianceService: Gửi dữ liệu kiểm tra tuân thủ
+    ComplianceService-->>AssetService: OK/Vi phạm
+
+    AssetService->>TokenService: Gửi yêu cầu token hóa
+    TokenService->>Blockchain: Mint token
+    Blockchain-->>TokenService: TX confirmed
+    TokenService-->>AssetService: Trả về token_id, tx_hash
+    AssetService-->>Owner: Token hóa hoàn tất
 ```
 
 ### 7.2 Quy trình giao dịch
@@ -532,22 +540,21 @@ sequenceDiagram
 sequenceDiagram
     participant Buyer
     participant Seller
+    participant AuthZ
     participant OrderService
-    participant MatchingEngine
     participant TokenService
     participant Blockchain
 
-    Buyer->>OrderService: Đặt lệnh mua (buy order)
-    Seller->>OrderService: Đặt lệnh bán (sell order)
+    Buyer->>OrderService: Đặt lệnh mua
+    Seller->>OrderService: Đặt lệnh bán
 
-    OrderService->>MatchingEngine: Gửi lệnh để khớp
-    MatchingEngine->>MatchingEngine: Khớp lệnh và tạo giao dịch
-    MatchingEngine->>TokenService: Yêu cầu thực hiện giao dịch (fraction_id, amount, from_did, to_did)
+    OrderService->>AuthZ: Kiểm tra quyền giao dịch
+    AuthZ-->>OrderService: OK
 
-    TokenService->>Blockchain: Gửi giao dịch chuyển token
-    Blockchain-->>TokenService: Xác nhận thành công (tx_hash)
-
-    TokenService-->>OrderService: Giao dịch thành công
+    OrderService->>TokenService: Yêu cầu giao dịch (fraction_id, from, to)
+    TokenService->>Blockchain: Submit transaction
+    Blockchain-->>TokenService: Giao dịch thành công
+    TokenService-->>OrderService: Giao dịch hoàn tất
     OrderService-->>Buyer: Cập nhật trạng thái đơn mua
     OrderService-->>Seller: Cập nhật trạng thái đơn bán
 ```
