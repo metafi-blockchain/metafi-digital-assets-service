@@ -15,7 +15,7 @@ graph TD
 
     %% Middleware Layer
     subgraph "Middleware Layer"
-        Gateway[API Gateway]
+        Gateway[Kong API Gateway]
         AuthN[AuthN Service]
         AuthZ[AuthZ Service]
         DID[DID Middleware<br/>ACA-Py]
