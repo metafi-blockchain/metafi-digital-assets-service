@@ -196,6 +196,7 @@ graph TD
             FabricPeer1["Fabric Peer Org1"]
             FabricPeer2["Fabric Peer Org2"]
             Orderer[Orderer Node]
+            Indy[Indy Node]
         end
 
         subgraph Storage
@@ -218,6 +219,7 @@ graph TD
         AuthNPod --> RedisPod
         DIDPod --> RedisPod
         AssetPod --> IPFSPod
+        ACA-Py --> Indy
     end
 ```
 
