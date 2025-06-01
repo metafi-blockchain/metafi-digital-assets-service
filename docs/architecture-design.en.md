@@ -38,6 +38,7 @@ graph TD
 
     subgraph "Blockchain Layer"
         Fabric["Hyperledger Fabric<br/>Token SDK"]
+        Indy ["Hyperledger Indy"]
     end
 
     subgraph "Storage Layer"
@@ -65,7 +66,7 @@ graph TD
     Asset --> DB
     Asset --> Cache
     Asset --> Storage
-    DID -->|via ACA-Py| Fabric
+    DID -->|via ACA-Py| Indy
 ```
 
 ---
