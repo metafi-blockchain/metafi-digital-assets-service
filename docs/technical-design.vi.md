@@ -92,7 +92,7 @@ graph TD
   * SDK cho các ngôn ngữ phổ biến
 
 #### 1.2.2 Middleware Layer
-* **API Gateway**
+* **Kong API Gateway**
   * Quản lý routing
   * Rate limiting
   * Load balancing
@@ -168,15 +168,24 @@ graph TD
   * Redis (cache)
   * IPFS/MinIO (storage)
   * Prometheus/Grafana (monitoring)
+* **Token Service**
+  * NestJs
+  * gRPC
+  * PostgreSQL
+  * Redis (cache)
+  * IPFS/MinIO (storage)
+  * Prometheus/Grafana (monitoring)
 
 * **AuthN/AuthZ**
   * Golang
-  * gRPC
+  * gRPC protocol
   * JWT
   * Redis (session)
   * PostgreSQL
 
 * **DID Middleware**
+  * Golang
+  * gRPC protocol
   * Aries Cloud Agent Python (ACA-Py)
   * Hyperledger Indy
   * PostgreSQL
