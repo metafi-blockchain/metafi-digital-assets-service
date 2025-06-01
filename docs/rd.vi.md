@@ -9,6 +9,7 @@
 6. [Vai trò người dùng và Phân quyền](#6-vai-trò-người-dùng-và-phân-quyền)
 7. [Quy trình nghiệp vụ](#7-quy-trình-nghiệp-vụ)
 8. [Triển khai và Vận hành](#8-triển-khai-và-vận-hành)
+9. [Phần mở rộng (Future Scope)](#9-phần-mở-rộng-future-scope)
 
 ## 1. Tổng quan
 
@@ -733,5 +734,19 @@ graph TD
 - Phase 2: Token management
 - Phase 3: Trading features
 - Phase 4: Advanced features
+
+*Cập nhật: 31/05/2025*
+
+## 9. Phần mở rộng (Future Scope)
+
+Các chức năng/phân hệ sau đây sẽ được xem xét phát triển ở các giai đoạn tiếp theo:
+
+- **Phân phối lợi nhuận** (Profit Distribution/Dividend)
+- **Voting / Quyền biểu quyết theo sở hữu**
+- **Compliance Service** (Dịch vụ tuân thủ)
+- **Order Service** (Sổ lệnh, khớp lệnh, giao dịch trên sàn)
+- **Marketplace** (Sàn giao dịch tài sản, giao dịch fraction, đặt lệnh mua/bán)
+
+Các nội dung này sẽ được bổ sung chi tiết trong các bản cập nhật tài liệu tiếp theo khi hệ thống mở rộng phạm vi.
 
 *Cập nhật: 31/05/2025*
