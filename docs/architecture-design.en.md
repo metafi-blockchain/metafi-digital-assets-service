@@ -38,7 +38,7 @@ graph TD
 
     subgraph "Blockchain Layer"
         Fabric["Hyperledger Fabric<br/>Token SDK"]
-        Indy ["Hyperledger Indy"]
+        Indy["Hyperledger Indy"]
     end
 
     subgraph "Storage Layer"
