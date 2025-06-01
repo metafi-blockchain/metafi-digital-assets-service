@@ -212,14 +212,14 @@ graph TD
 
         AssetPod --> TokenPod
         TokenPod --> FabricPeer1
-        DIDPod -->|HTTP| ACA-Py
+        DIDPod -->|HTTP| ACA-PyPod
 
         AssetPod --> DBPod
         TokenPod --> DBPod
         AuthNPod --> RedisPod
         DIDPod --> RedisPod
         AssetPod --> IPFSPod
-        ACA-Py --> Indy
+        ACA-PyPod --> Indy
     end
 ```
 
