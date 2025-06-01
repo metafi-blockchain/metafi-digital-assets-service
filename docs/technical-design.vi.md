@@ -16,6 +16,7 @@ graph TD
         Gateway[API Gateway]
         AuthN[AuthN Service]
         AuthZ[AuthZ Service]
+        DID[DID Service]
     end
 
     subgraph "Application Layer"
@@ -44,17 +45,16 @@ graph TD
 
     AuthN --> Asset
     AuthZ --> Asset
+    DID --> Asset
 
     Asset --> Compliance
     Asset --> Token
     Token --> Fabric
+    DID --> Fabric
 
     Asset --> DB
     Asset --> Cache
     Asset --> Storage
-
-    Token --> DB
-    Token --> Cache
 ```
 
 ### 1.2 Tổng Quan Thành Phần
@@ -74,15 +74,10 @@ graph TD
   * Ghi log audit
   * Streaming thời gian thực
 
-* **Token Service**
-  * Máy chủ gRPC
+* **Token Service** (External Service)
+  * Giao tiếp qua gRPC
   * Quản lý vòng đời token
-  * Xử lý giao dịch
-  * Quản lý metadata tài sản
-  * Quản lý sự kiện
-  * Streaming thời gian thực
-  * Hỗ trợ tài sản phân đoạn
-  * Tích hợp marketplace
+  * Tích hợp với Fabric Network
 
 * **AuthN**
   * Quản lý token JWT
@@ -96,6 +91,8 @@ graph TD
   * Quản lý danh tính (DID)
   * Quản lý chứng chỉ
   * Tích hợp MSP
+  * Xác thực KYC
+  * Cấp phát MSP Identity
 
 * **Fabric Network**
   * Mạng blockchain riêng
@@ -113,14 +110,6 @@ graph TD
   * PostgreSQL
   * Redis (cache)
   * IPFS/MinIO (storage)
-  * Prometheus/Grafana (monitoring)
-
-* **Token Service**
-  * Golang
-  * gRPC
-  * Fabric SDK
-  * PostgreSQL
-  * Redis (cache)
   * Prometheus/Grafana (monitoring)
 
 * **AuthN/AuthZ**
@@ -281,163 +270,10 @@ CREATE TABLE asset_audit_logs (
 );
 ```
 
-#### 3.1.4 gRPC Proto
+#### 3.1.4 Token Service Interface (gRPC)
 
 ```protobuf
-service AssetService {
-    // Quản lý tài sản
-    rpc CreateAsset(CreateAssetRequest) returns (AssetResponse);
-    rpc UpdateAsset(UpdateAssetRequest) returns (AssetResponse);
-    rpc GetAsset(GetAssetRequest) returns (AssetResponse);
-    rpc ListAssets(ListAssetsRequest) returns (ListAssetsResponse);
-    
-    // Token hóa và phân đoạn
-    rpc TokenizeAsset(TokenizeAssetRequest) returns (AssetResponse);
-    rpc CreateFraction(CreateFractionRequest) returns (FractionResponse);
-    rpc TransferOwnership(TransferOwnershipRequest) returns (Empty);
-    
-    // Quản lý trạng thái
-    rpc UpdateAssetState(UpdateStateRequest) returns (Empty);
-    rpc RejectAsset(RejectRequest) returns (Empty);
-    rpc RequestModification(ModificationRequest) returns (Empty);
-    
-    // Sự kiện
-    rpc SubscribeToEvents(SubscribeRequest) returns (stream AssetEvent);
-}
-
-message CreateAssetRequest {
-    string name = 1;
-    string type = 2;
-    string owner_did = 3;
-    string value = 4;
-    bytes metadata = 5;
-}
-
-message TokenizeAssetRequest {
-    string asset_id = 1;
-}
-
-message CreateFractionRequest {
-    string asset_id = 1;
-    int32 total_fractions = 2;
-    string min_fraction_value = 3;
-    map<string, string> metadata = 4;
-}
-
-message AssetEvent {
-    string event_id = 1;
-    string event_type = 2;
-    string asset_id = 3;
-    bytes data = 4;
-    int64 timestamp = 5;
-}
-```
-
-### 3.2 Token Service
-
-#### 3.2.1 Vai Trò Chính
-
-- Quản lý vòng đời token (mint, burn, transfer)
-- Xử lý giao dịch token
-- Quản lý số dư và lịch sử giao dịch
-- Tích hợp với Fabric Network
-- Hỗ trợ tài sản phân đoạn
-- Tích hợp marketplace
-
-#### 3.2.2 Giao Diện Dịch Vụ
-
-```go
-// Giao Diện Dịch Vụ Token
-interface TokenService {
-    // Quản lý token
-    CreateToken(ctx context.Context, req *CreateTokenRequest) (*Token, error)
-    TransferToken(ctx context.Context, req *TransferRequest) (*Transaction, error)
-    BurnToken(ctx context.Context, req *BurnRequest) (*Transaction, error)
-    
-    // Quản lý fraction
-    CreateFraction(ctx context.Context, req *FractionRequest) (*Fraction, error)
-    TransferFraction(ctx context.Context, req *FractionTransferRequest) (*Transaction, error)
-    GetFractionBalance(ctx context.Context, req *BalanceRequest) (*Balance, error)
-    
-    // Truy vấn
-    GetTokenBalance(ctx context.Context, req *BalanceRequest) (*Balance, error)
-    GetTransactionHistory(ctx context.Context, req *HistoryRequest) ([]*Transaction, error)
-    
-    // Sự kiện
-    SubscribeToEvents(callback EventCallback) error
-    ProcessEvents(event *TokenEvent) error
-}
-
-// Cấu trúc dữ liệu
-type Token struct {
-    ID          string          `json:"id"`
-    AssetID     string          `json:"asset_id"`
-    OwnerDID    string          `json:"owner_did"`
-    Type        string          `json:"type"`
-    Amount      decimal.Decimal `json:"amount"`
-    Status      string          `json:"status"`
-    Metadata    json.RawMessage `json:"metadata"`
-    CreatedAt   time.Time       `json:"created_at"`
-    UpdatedAt   time.Time       `json:"updated_at"`
-}
-
-type Transaction struct {
-    ID              string          `json:"id"`
-    TokenID         string          `json:"token_id"`
-    FromDID         string          `json:"from_did"`
-    ToDID           string          `json:"to_did"`
-    Amount          decimal.Decimal `json:"amount"`
-    Type            string          `json:"type"`
-    Status          string          `json:"status"`
-    TxHash          string          `json:"tx_hash"`
-    CreatedAt       time.Time       `json:"created_at"`
-}
-```
-
-#### 3.2.3 Schema Cơ Sở Dữ Liệu
-
-```sql
--- Bảng Tokens
-CREATE TABLE tokens (
-    id UUID PRIMARY KEY,
-    asset_id UUID NOT NULL,
-    owner_did TEXT NOT NULL,
-    type TEXT NOT NULL,
-    amount DECIMAL NOT NULL,
-    status TEXT NOT NULL,
-    metadata JSONB,
-    created_at TIMESTAMP NOT NULL,
-    updated_at TIMESTAMP NOT NULL
-);
-
--- Bảng Transactions
-CREATE TABLE transactions (
-    id UUID PRIMARY KEY,
-    token_id UUID NOT NULL,
-    from_did TEXT NOT NULL,
-    to_did TEXT NOT NULL,
-    amount DECIMAL NOT NULL,
-    type TEXT NOT NULL,
-    status TEXT NOT NULL,
-    tx_hash TEXT,
-    created_at TIMESTAMP NOT NULL,
-    FOREIGN KEY (token_id) REFERENCES tokens(id)
-);
-
--- Bảng Token Events
-CREATE TABLE token_events (
-    id UUID PRIMARY KEY,
-    token_id UUID NOT NULL,
-    event_type TEXT NOT NULL,
-    data JSONB,
-    created_at TIMESTAMP NOT NULL,
-    FOREIGN KEY (token_id) REFERENCES tokens(id)
-);
-```
-
-#### 3.2.4 gRPC Proto
-
-```protobuf
+// Interface giao tiếp với Token Service
 service TokenService {
     // Quản lý token
     rpc CreateToken(CreateTokenRequest) returns (Token);
@@ -481,9 +317,9 @@ message TokenEvent {
 }
 ```
 
-### 3.3 Monitoring và Logging
+### 3.2 Monitoring và Logging
 
-#### 3.3.1 Metrics
+#### 3.2.1 Metrics
 
 ```go
 // Định nghĩa metrics
@@ -492,15 +328,6 @@ type Metrics struct {
     AssetCreation     *prometheus.CounterVec
     AssetStateChanges *prometheus.CounterVec
     AssetOperations   *prometheus.HistogramVec
-    
-    // Token metrics
-    TokenCreation     *prometheus.CounterVec
-    TokenTransfers    *prometheus.CounterVec
-    TokenOperations   *prometheus.HistogramVec
-    
-    // Fraction metrics
-    FractionCreation  *prometheus.CounterVec
-    FractionTransfers *prometheus.CounterVec
     
     // System metrics
     RequestLatency    *prometheus.HistogramVec
@@ -518,19 +345,12 @@ func NewMetrics() *Metrics {
             },
             []string{"type", "status"},
         ),
-        TokenCreation: prometheus.NewCounterVec(
-            prometheus.CounterOpts{
-                Name: "token_creation_total",
-                Help: "Tổng số token được tạo",
-            },
-            []string{"type", "status"},
-        ),
         // ... other metrics
     }
 }
 ```
 
-#### 3.3.2 Logging
+#### 3.2.2 Logging
 
 ```go
 // Cấu trúc log event
