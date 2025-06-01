@@ -23,7 +23,7 @@
 
 %% Actors: Asset Owner, System Admin, Approver, User, Auditor, Compliance Service, Recipient
 
-usecaseDiagram
+usecase
     actor AssetOwner as "Asset Owner"
     actor SystemAdmin as "System Admin"
     actor Approver as "Approver"
