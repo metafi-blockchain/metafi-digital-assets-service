@@ -21,10 +21,17 @@ graph TD
     subgraph "Application Layer"
         Asset[Asset Service]
         Token[Token Service]
+        Compliance[Compliance Service]
     end
 
     subgraph "Blockchain Layer"
         Fabric[Fabric Network]
+    end
+
+    subgraph "Storage Layer"
+        DB[(Database)]
+        Cache[(Redis Cache)]
+        Storage[(IPFS/MinIO)]
     end
 
     Web --> Gateway
@@ -38,13 +45,16 @@ graph TD
     AuthN --> Asset
     AuthZ --> Asset
 
+    Asset --> Compliance
     Asset --> Token
     Token --> Fabric
 
-    %% Interface Labels
-    Gateway -.->|"Client ↔ Gateway"| Asset
-    Asset -.->|"Asset ↔ Token Service"| Token
-    Token -.->|"Token ↔ Fabric"| Fabric
+    Asset --> DB
+    Asset --> Cache
+    Asset --> Storage
+
+    Token --> DB
+    Token --> Cache
 ```
 
 ### 1.2 Tổng Quan Thành Phần
@@ -53,9 +63,8 @@ graph TD
   * Frontend web (React/Next.js)
   * Ứng dụng di động (React Native)
   * Bảng điều khiển quản trị
-  * Tích hợp client gRPC
 
-* **Dịch Vụ Tài Sản (Asset Service)**
+* **Asset Service**
   * Máy chủ gRPC
   * Quản lý metadata tài sản
   * Xác thực DID chủ sở hữu
@@ -65,7 +74,7 @@ graph TD
   * Ghi log audit
   * Streaming thời gian thực
 
-* **Dịch Vụ Token**
+* **Token Service**
   * Máy chủ gRPC
   * Quản lý vòng đời token
   * Xử lý giao dịch
@@ -75,52 +84,57 @@ graph TD
   * Hỗ trợ tài sản phân đoạn
   * Tích hợp marketplace
 
-* **Dịch Vụ Xác Thực**
-  * Máy chủ gRPC
+* **AuthN**
   * Quản lý token JWT
-  * Kiểm soát truy cập dựa trên vai trò (RBAC)
-  * Quản lý quyền
   * Quản lý phiên
 
-* **Dịch Vụ DID**
-  * Máy chủ gRPC
-  * Quản lý danh tính
+* **AuthZ**
+  * Kiểm soát truy cập dựa trên vai trò (RBAC)
+  * Quản lý quyền
+
+* **DID Service**
+  * Quản lý danh tính (DID)
   * Quản lý chứng chỉ
   * Tích hợp MSP
-  * Tích hợp KYC/AML
 
-* **Mạng Fabric**
+* **Fabric Network**
   * Mạng blockchain riêng
-  * Hợp đồng thông minh
+  * ChainCode
   * Tích hợp Token SDK
   * Hệ thống sự kiện
 
----
-
 ## 2. Stack Công Nghệ
 
-### 2.1 Dịch Vụ Backend
+### 2.1 Backend Services
 
-* **Dịch Vụ Token**
+* **Asset Service**
+  * Golang
+  * gRPC
+  * PostgreSQL
+  * Redis (cache)
+  * IPFS/MinIO (storage)
+  * Prometheus/Grafana (monitoring)
+
+* **Token Service**
   * Golang
   * gRPC
   * Fabric SDK
   * PostgreSQL
   * Redis (cache)
+  * Prometheus/Grafana (monitoring)
 
-* **Dịch Vụ Xác Thực**
+* **AuthN/AuthZ**
   * Golang
   * gRPC
   * JWT
-  * Redis (lưu trữ phiên)
-  * PostgreSQL (dữ liệu người dùng)
+  * Redis (session)
+  * PostgreSQL
 
-* **Dịch Vụ DID**
+* **DID Service**
   * Golang
   * gRPC
   * Fabric SDK
   * PostgreSQL
-  * IPFS/MinIO
 
 ### 2.2 Frontend
 
@@ -154,593 +168,372 @@ graph TD
   * Fabric Token SDK
   * Chaincode (Go)
 
----
+## 3. Thiết Kế Chi Tiết
 
-## 3. Thiết Kế Chi Tiết Thành Phần
+### 3.1 Asset Service
 
-### 3.1 Dịch Vụ Token
+#### 3.1.1 Vai Trò Chính
 
-#### 3.1.1 Thành Phần Cốt Lõi
+- Quản lý metadata tài sản
+- Quản lý vòng đời tài sản: tạo, cập nhật, token hóa, phân đoạn
+- Kiểm tra quyền sở hữu qua DID
+- Tích hợp ComplianceService và TokenService
+- Cung cấp API/gRPC cho frontend và các dịch vụ khác
+
+#### 3.1.2 Giao Diện Dịch Vụ
 
 ```go
-// Giao Diện Dịch Vụ Token
-type TokenService interface {
-    // Quản Lý Token
-    CreateToken(ctx context.Context, asset *Asset) (*Token, error)
-    TransferToken(ctx context.Context, transfer *TransferRequest) (*Transaction, error)
-    BurnToken(ctx context.Context, burn *BurnRequest) (*Transaction, error)
+// Giao Diện Dịch Vụ Asset
+interface AssetService {
+    // Quản lý tài sản
+    CreateAsset(ctx context.Context, req *CreateAssetRequest) (*Asset, error)
+    UpdateAsset(ctx context.Context, req *UpdateAssetRequest) (*Asset, error)
+    GetAsset(ctx context.Context, id string) (*Asset, error)
+    ListAssets(ctx context.Context, filter *AssetFilter) ([]*Asset, error)
     
-    // Quản Lý Tài Sản Phân Đoạn
-    CreateFraction(ctx context.Context, fraction *FractionRequest) (*Fraction, error)
-    TransferFraction(ctx context.Context, transfer *FractionTransferRequest) (*Transaction, error)
-    GetFractionBalance(ctx context.Context, wallet string) (*FractionBalance, error)
-    DistributeProfit(ctx context.Context, distribution *ProfitDistributionRequest) error
+    // Token hóa và phân đoạn
+    TokenizeAsset(ctx context.Context, req *TokenizeAssetRequest) (*Asset, error)
+    CreateFraction(ctx context.Context, req *FractionRequest) (*FractionResponse, error)
+    TransferOwnership(ctx context.Context, req *TransferOwnershipRequest) error
     
-    // Thao Tác Truy Vấn
-    GetTokenBalance(ctx context.Context, wallet string) (*Balance, error)
-    GetTransactionHistory(ctx context.Context, filters *QueryFilters) ([]*Transaction, error)
+    // Quản lý trạng thái
+    UpdateAssetState(ctx context.Context, req *UpdateStateRequest) error
+    RejectAsset(ctx context.Context, req *RejectRequest) error
+    RequestModification(ctx context.Context, req *ModificationRequest) error
     
-    // Xử Lý Sự Kiện
+    // Quản lý sự kiện
     SubscribeToEvents(callback EventCallback) error
-    ProcessEvents(event *TokenEvent) error
+    ProcessEvents(event *AssetEvent) error
 }
 
-// Triển Khai Dịch Vụ Token
-type tokenServiceImpl struct {
-    fabricClient *fabric.Client
-    db          *sql.DB
-    cache       *redis.Client
-    logger      *zap.Logger
-    grpcServer  *grpc.Server
-    metrics     *Metrics
-    auditLogger *AuditLogger
-}
-
-// Asset đại diện cho tài sản số
+// Cấu trúc dữ liệu
 type Asset struct {
     ID          string          `json:"id"`
-    OwnerID     string          `json:"owner_id"`
-    TokenType   string          `json:"token_type"`
-    Amount      decimal.Decimal `json:"amount"`
+    Name        string          `json:"name"`
+    Type        string          `json:"type"`
+    OwnerDID    string          `json:"owner_did"`
+    Value       decimal.Decimal `json:"value"`
+    Status      string          `json:"status"` // DRAFT, SUBMITTED, APPROVED, REJECTED, AWAITING_FIX, TOKENIZED, ARCHIVED
     Metadata    json.RawMessage `json:"metadata"`
-    State       string          `json:"state"`
     CreatedAt   time.Time       `json:"created_at"`
     UpdatedAt   time.Time       `json:"updated_at"`
 }
 
-// Fraction đại diện cho phần tài sản phân đoạn
-type Fraction struct {
-    ID              string          `json:"id"`
-    AssetID         string          `json:"asset_id"`
-    OwnerID         string          `json:"owner_id"`
-    Amount          decimal.Decimal `json:"amount"`
-    TotalFractions  int            `json:"total_fractions"`
-    OwnershipType   string          `json:"ownership_type"`
-    CreatedAt       time.Time       `json:"created_at"`
-    UpdatedAt       time.Time       `json:"updated_at"`
-}
-
-// Transaction đại diện cho giao dịch token
-type Transaction struct {
-    ID              string          `json:"id"`
-    TokenID         string          `json:"token_id"`
-    FromWallet      string          `json:"from_wallet"`
-    ToWallet        string          `json:"to_wallet"`
-    Amount          decimal.Decimal `json:"amount"`
-    TransactionType string          `json:"transaction_type"`
-    Status          string          `json:"status"`
-    CreatedAt       time.Time       `json:"created_at"`
-}
-
-// EventCallback là kiểu hàm để xử lý sự kiện token
-type EventCallback func(event *TokenEvent) error
-
-// AuditLogger xử lý ghi log audit
-type AuditLogger struct {
-    logger *zap.Logger
-    db     *sql.DB
-}
-
-// Metrics quản lý metrics hệ thống
-type Metrics struct {
-    OperationDuration *prometheus.HistogramVec
-    OperationErrors   *prometheus.CounterVec
-    TokenCreation     *prometheus.CounterVec
-    TokenTransfers    *prometheus.CounterVec
-    FractionOperations *prometheus.CounterVec
+type FractionResponse struct {
+    AssetID        string                     `json:"asset_id"`
+    TotalFractions int                        `json:"total_fractions"`
+    FractionTokens []string                   `json:"fraction_token_ids"`
+    OwnerMapping   map[string]float64         `json:"ownership_map"`
 }
 ```
 
-#### 3.1.2 Schema Cơ Sở Dữ Liệu
+#### 3.1.3 Schema Cơ Sở Dữ Liệu
+
+```sql
+-- Bảng Assets
+CREATE TABLE assets (
+    id UUID PRIMARY KEY,
+    name TEXT NOT NULL,
+    type TEXT NOT NULL,
+    owner_did TEXT NOT NULL,
+    value DECIMAL NOT NULL,
+    status TEXT NOT NULL,
+    metadata JSONB,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL
+);
+
+-- Bảng Asset Events
+CREATE TABLE asset_events (
+    id UUID PRIMARY KEY,
+    asset_id UUID REFERENCES assets(id),
+    event_type TEXT NOT NULL,
+    data JSONB,
+    created_at TIMESTAMP NOT NULL
+);
+
+-- Bảng Asset Fractions
+CREATE TABLE asset_fractions (
+    id UUID PRIMARY KEY,
+    asset_id UUID REFERENCES assets(id),
+    token_id TEXT NOT NULL,
+    owner_did TEXT NOT NULL,
+    amount DECIMAL NOT NULL,
+    total_fractions INTEGER NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL
+);
+
+-- Bảng Asset Audit Logs
+CREATE TABLE asset_audit_logs (
+    id UUID PRIMARY KEY,
+    asset_id UUID REFERENCES assets(id),
+    trace_id TEXT NOT NULL,
+    operation TEXT NOT NULL,
+    level TEXT NOT NULL,
+    message TEXT NOT NULL,
+    error TEXT,
+    metadata JSONB,
+    ip_address TEXT,
+    user_agent TEXT,
+    session_id TEXT,
+    created_at TIMESTAMP NOT NULL
+);
+```
+
+#### 3.1.4 gRPC Proto
+
+```protobuf
+service AssetService {
+    // Quản lý tài sản
+    rpc CreateAsset(CreateAssetRequest) returns (AssetResponse);
+    rpc UpdateAsset(UpdateAssetRequest) returns (AssetResponse);
+    rpc GetAsset(GetAssetRequest) returns (AssetResponse);
+    rpc ListAssets(ListAssetsRequest) returns (ListAssetsResponse);
+    
+    // Token hóa và phân đoạn
+    rpc TokenizeAsset(TokenizeAssetRequest) returns (AssetResponse);
+    rpc CreateFraction(CreateFractionRequest) returns (FractionResponse);
+    rpc TransferOwnership(TransferOwnershipRequest) returns (Empty);
+    
+    // Quản lý trạng thái
+    rpc UpdateAssetState(UpdateStateRequest) returns (Empty);
+    rpc RejectAsset(RejectRequest) returns (Empty);
+    rpc RequestModification(ModificationRequest) returns (Empty);
+    
+    // Sự kiện
+    rpc SubscribeToEvents(SubscribeRequest) returns (stream AssetEvent);
+}
+
+message CreateAssetRequest {
+    string name = 1;
+    string type = 2;
+    string owner_did = 3;
+    string value = 4;
+    bytes metadata = 5;
+}
+
+message TokenizeAssetRequest {
+    string asset_id = 1;
+}
+
+message CreateFractionRequest {
+    string asset_id = 1;
+    int32 total_fractions = 2;
+    string min_fraction_value = 3;
+    map<string, string> metadata = 4;
+}
+
+message AssetEvent {
+    string event_id = 1;
+    string event_type = 2;
+    string asset_id = 3;
+    bytes data = 4;
+    int64 timestamp = 5;
+}
+```
+
+### 3.2 Token Service
+
+#### 3.2.1 Vai Trò Chính
+
+- Quản lý vòng đời token (mint, burn, transfer)
+- Xử lý giao dịch token
+- Quản lý số dư và lịch sử giao dịch
+- Tích hợp với Fabric Network
+- Hỗ trợ tài sản phân đoạn
+- Tích hợp marketplace
+
+#### 3.2.2 Giao Diện Dịch Vụ
+
+```go
+// Giao Diện Dịch Vụ Token
+interface TokenService {
+    // Quản lý token
+    CreateToken(ctx context.Context, req *CreateTokenRequest) (*Token, error)
+    TransferToken(ctx context.Context, req *TransferRequest) (*Transaction, error)
+    BurnToken(ctx context.Context, req *BurnRequest) (*Transaction, error)
+    
+    // Quản lý fraction
+    CreateFraction(ctx context.Context, req *FractionRequest) (*Fraction, error)
+    TransferFraction(ctx context.Context, req *FractionTransferRequest) (*Transaction, error)
+    GetFractionBalance(ctx context.Context, req *BalanceRequest) (*Balance, error)
+    
+    // Truy vấn
+    GetTokenBalance(ctx context.Context, req *BalanceRequest) (*Balance, error)
+    GetTransactionHistory(ctx context.Context, req *HistoryRequest) ([]*Transaction, error)
+    
+    // Sự kiện
+    SubscribeToEvents(callback EventCallback) error
+    ProcessEvents(event *TokenEvent) error
+}
+
+// Cấu trúc dữ liệu
+type Token struct {
+    ID          string          `json:"id"`
+    AssetID     string          `json:"asset_id"`
+    OwnerDID    string          `json:"owner_did"`
+    Type        string          `json:"type"`
+    Amount      decimal.Decimal `json:"amount"`
+    Status      string          `json:"status"`
+    Metadata    json.RawMessage `json:"metadata"`
+    CreatedAt   time.Time       `json:"created_at"`
+    UpdatedAt   time.Time       `json:"updated_at"`
+}
+
+type Transaction struct {
+    ID              string          `json:"id"`
+    TokenID         string          `json:"token_id"`
+    FromDID         string          `json:"from_did"`
+    ToDID           string          `json:"to_did"`
+    Amount          decimal.Decimal `json:"amount"`
+    Type            string          `json:"type"`
+    Status          string          `json:"status"`
+    TxHash          string          `json:"tx_hash"`
+    CreatedAt       time.Time       `json:"created_at"`
+}
+```
+
+#### 3.2.3 Schema Cơ Sở Dữ Liệu
 
 ```sql
 -- Bảng Tokens
 CREATE TABLE tokens (
     id UUID PRIMARY KEY,
     asset_id UUID NOT NULL,
-    owner_id UUID NOT NULL,
-    token_type VARCHAR(50) NOT NULL,
+    owner_did TEXT NOT NULL,
+    type TEXT NOT NULL,
     amount DECIMAL NOT NULL,
+    status TEXT NOT NULL,
     metadata JSONB,
-    state VARCHAR(50) NOT NULL,
     created_at TIMESTAMP NOT NULL,
     updated_at TIMESTAMP NOT NULL
-);
-
--- Bảng Fractions
-CREATE TABLE fractions (
-    id UUID PRIMARY KEY,
-    asset_id UUID NOT NULL,
-    owner_id UUID NOT NULL,
-    amount DECIMAL NOT NULL,
-    total_fractions INTEGER NOT NULL,
-    ownership_type VARCHAR(50) NOT NULL,
-    created_at TIMESTAMP NOT NULL,
-    updated_at TIMESTAMP NOT NULL,
-    FOREIGN KEY (asset_id) REFERENCES tokens(id)
 );
 
 -- Bảng Transactions
 CREATE TABLE transactions (
     id UUID PRIMARY KEY,
     token_id UUID NOT NULL,
-    from_wallet VARCHAR(255) NOT NULL,
-    to_wallet VARCHAR(255) NOT NULL,
+    from_did TEXT NOT NULL,
+    to_did TEXT NOT NULL,
     amount DECIMAL NOT NULL,
-    transaction_type VARCHAR(50) NOT NULL,
-    status VARCHAR(50) NOT NULL,
+    type TEXT NOT NULL,
+    status TEXT NOT NULL,
+    tx_hash TEXT,
     created_at TIMESTAMP NOT NULL,
     FOREIGN KEY (token_id) REFERENCES tokens(id)
 );
 
--- Bảng Audit Logs
-CREATE TABLE audit_logs (
+-- Bảng Token Events
+CREATE TABLE token_events (
     id UUID PRIMARY KEY,
-    trace_id VARCHAR(255) NOT NULL,
-    service VARCHAR(50) NOT NULL,
-    operation VARCHAR(50) NOT NULL,
-    level VARCHAR(20) NOT NULL,
-    message TEXT NOT NULL,
-    error TEXT,
-    metadata JSONB,
-    ip_address VARCHAR(45),
-    user_agent TEXT,
-    session_id VARCHAR(255),
-    created_at TIMESTAMP NOT NULL
+    token_id UUID NOT NULL,
+    event_type TEXT NOT NULL,
+    data JSONB,
+    created_at TIMESTAMP NOT NULL,
+    FOREIGN KEY (token_id) REFERENCES tokens(id)
 );
 ```
 
-#### 3.1.3 Triển Khai Dịch Vụ gRPC
-
-```go
-// TokenServiceServer triển khai dịch vụ gRPC
-type TokenServiceServer struct {
-    pb.UnimplementedTokenServiceServer
-    service TokenService
-    logger  *zap.Logger
-}
-
-// CreateToken triển khai phương thức RPC CreateToken
-func (s *TokenServiceServer) CreateToken(ctx context.Context, req *pb.CreateTokenRequest) (*pb.Token, error) {
-    asset := &Asset{
-        ID:        req.AssetId,
-        OwnerID:   req.OwnerId,
-        TokenType: req.TokenType,
-        Amount:    decimal.RequireFromString(req.Amount),
-        Metadata:  req.Metadata,
-    }
-
-    token, err := s.service.CreateToken(ctx, asset)
-    if err != nil {
-        s.logger.Error("lỗi khi tạo token", zap.Error(err))
-        return nil, status.Error(codes.Internal, "lỗi khi tạo token")
-    }
-
-    return convertToProtoToken(token), nil
-}
-
-// TransferToken triển khai phương thức RPC TransferToken
-func (s *TokenServiceServer) TransferToken(ctx context.Context, req *pb.TransferRequest) (*pb.Transaction, error) {
-    transfer := &TransferRequest{
-        TokenID:    req.TokenId,
-        FromWallet: req.FromWallet,
-        ToWallet:   req.ToWallet,
-        Amount:     decimal.RequireFromString(req.Amount),
-    }
-
-    transaction, err := s.service.TransferToken(ctx, transfer)
-    if err != nil {
-        s.logger.Error("lỗi khi chuyển token", zap.Error(err))
-        return nil, status.Error(codes.Internal, "lỗi khi chuyển token")
-    }
-
-    return convertToProtoTransaction(transaction), nil
-}
-```
-
-#### 3.1.4 Định Nghĩa Dịch Vụ gRPC
+#### 3.2.4 gRPC Proto
 
 ```protobuf
-syntax = "proto3";
-
-package token;
-
-option go_package = "github.com/metafi/digital-assets-service/token";
-
 service TokenService {
+    // Quản lý token
     rpc CreateToken(CreateTokenRequest) returns (Token);
     rpc TransferToken(TransferRequest) returns (Transaction);
     rpc BurnToken(BurnRequest) returns (Transaction);
-    rpc GetBalance(BalanceRequest) returns (Balance);
+    
+    // Quản lý fraction
+    rpc CreateFraction(CreateFractionRequest) returns (Fraction);
+    rpc TransferFraction(TransferFractionRequest) returns (Transaction);
+    rpc GetFractionBalance(BalanceRequest) returns (Balance);
+    
+    // Truy vấn
+    rpc GetTokenBalance(BalanceRequest) returns (Balance);
     rpc GetTransactionHistory(HistoryRequest) returns (TransactionList);
+    
+    // Sự kiện
     rpc SubscribeToEvents(SubscribeRequest) returns (stream TokenEvent);
 }
 
 message CreateTokenRequest {
     string asset_id = 1;
-    string owner_id = 2;
-    string token_type = 3;
+    string owner_did = 2;
+    string type = 3;
     string amount = 4;
     bytes metadata = 5;
 }
 
 message TransferRequest {
     string token_id = 1;
-    string from_wallet = 2;
-    string to_wallet = 3;
+    string from_did = 2;
+    string to_did = 3;
     string amount = 4;
-}
-
-message BurnRequest {
-    string token_id = 1;
-    string wallet = 2;
-    string amount = 3;
-}
-
-message BalanceRequest {
-    string wallet = 1;
-}
-
-message HistoryRequest {
-    string wallet = 1;
-    int32 limit = 2;
-    int32 offset = 3;
-}
-
-message SubscribeRequest {
-    string wallet = 1;
-    repeated string event_types = 2;
 }
 
 message TokenEvent {
     string event_id = 1;
     string event_type = 2;
     string token_id = 3;
-    string wallet = 4;
-    string amount = 5;
-    int64 timestamp = 6;
-    bytes metadata = 7;
+    bytes data = 4;
+    int64 timestamp = 5;
 }
 ```
 
-#### 3.1.5 Cấu Hình
+### 3.3 Monitoring và Logging
 
-```go
-// Config đại diện cho cấu hình của dịch vụ token
-type Config struct {
-    // Cấu hình máy chủ gRPC
-    Server struct {
-        Port int    `yaml:"port"`
-        Host string `yaml:"host"`
-    } `yaml:"server"`
-
-    // Cấu hình cơ sở dữ liệu
-    Database struct {
-        Host     string `yaml:"host"`
-        Port     int    `yaml:"port"`
-        User     string `yaml:"user"`
-        Password string `yaml:"password"`
-        Name     string `yaml:"name"`
-    } `yaml:"database"`
-
-    // Cấu hình Redis
-    Redis struct {
-        Host     string `yaml:"host"`
-        Port     int    `yaml:"port"`
-        Password string `yaml:"password"`
-        DB       int    `yaml:"db"`
-    } `yaml:"redis"`
-
-    // Cấu hình Fabric
-    Fabric struct {
-        ChannelID     string `yaml:"channel_id"`
-        ChaincodeName string `yaml:"chaincode_name"`
-        MSPID         string `yaml:"msp_id"`
-        CertPath      string `yaml:"cert_path"`
-        KeyPath       string `yaml:"key_path"`
-    } `yaml:"fabric"`
-}
-```
-
-### 3.2 Dịch Vụ DID
-
-#### 3.2.1 Thành Phần Cốt Lõi
-
-```go
-// Giao Diện Dịch Vụ DID
-type DIDService interface {
-    // Quản Lý Danh Tính
-    CreateIdentity(ctx context.Context, user *User) (*Identity, error)
-    VerifyIdentity(ctx context.Context, identity *Identity) (bool, error)
-    
-    // Quản Lý Chứng Chỉ
-    IssueCertificate(ctx context.Context, identity *Identity) (*Certificate, error)
-    RevokeCertificate(ctx context.Context, certificate *Certificate) error
-    
-    // Tích Hợp KYC
-    PerformKYC(ctx context.Context, user *User) (*KYCResult, error)
-    VerifyKYCStatus(ctx context.Context, user *User) (*KYCStatus, error)
-}
-```
-
-### 3.3 Dịch Vụ Xác Thực
-
-#### 3.3.1 Thành Phần Cốt Lõi
-
-```go
-// Giao Diện Dịch Vụ Xác Thực
-type AuthService interface {
-    // Xác Thực
-    Authenticate(ctx context.Context, credentials *Credentials) (*AuthToken, error)
-    ValidateToken(ctx context.Context, token string) (bool, error)
-    
-    // Phân Quyền
-    CheckPermission(ctx context.Context, user *User, resource *Resource) (bool, error)
-    AssignRole(ctx context.Context, user *User, role *Role) error
-    
-    // Quản Lý Phiên
-    CreateSession(ctx context.Context, user *User) (*Session, error)
-    InvalidateSession(ctx context.Context, session *Session) error
-}
-```
-
----
-
-## 4. Thiết Kế Bảo Mật
-
-### 4.1 Xác Thực
-
-* Xác thực dựa trên JWT
-* Xác thực đa yếu tố (MFA)
-* Quản lý phiên
-* Cơ chế làm mới token
-
-### 4.2 Phân Quyền
-
-* Kiểm soát truy cập dựa trên vai trò (RBAC)
-* Quyền cấp tài nguyên
-* Bảo vệ dịch vụ gRPC
-* Giới hạn tốc độ
-
-### 4.3 Bảo Mật Dữ Liệu
-
-* Mã hóa dữ liệu khi lưu trữ
-* TLS cho dữ liệu truyền tải
-* Quản lý khóa bảo mật
-* Kiểm tra bảo mật định kỳ
-
-### 4.4 Bảo Mật Blockchain
-
-* Quản lý danh tính dựa trên MSP
-* Ký giao dịch
-* Bảo mật hợp đồng thông minh
-* Bảo mật mạng
-
----
-
-## 5. Kiến Trúc Triển Khai
-
-### 5.1 Hạ Tầng
-
-```mermaid
-graph TD
-    LB[Bộ Cân Bằng Tải] --> Token1[Dịch Vụ Token 1]
-    LB --> Token2[Dịch Vụ Token 2]
-    LB --> Auth1[Dịch Vụ Xác Thực 1]
-    LB --> Auth2[Dịch Vụ Xác Thực 2]
-    Token1 --> DB1[(Cơ Sở Dữ Liệu 1)]
-    Token2 --> DB2[(Cơ Sở Dữ Liệu 2)]
-    Auth1 --> DB1
-    Auth2 --> DB2
-```
-
-### 5.2 Chiến Lược Triển Khai
-
-* Triển khai dựa trên Kubernetes
-* Điều phối container
-* Tự động mở rộng
-* Cân bằng tải
-* Tính sẵn sàng cao
-
-### 5.3 Giám Sát
-
-* Số liệu Prometheus
-* Bảng điều khiển Grafana
-* Stack ELK cho ghi log
-* Quản lý cảnh báo
-
----
-
-## 6. Giám Sát và Ghi Log
-
-### 6.1 Thu Thập Metrics
-
-#### 6.1.1 Prometheus Metrics
+#### 3.3.1 Metrics
 
 ```go
 // Định nghĩa metrics
 type Metrics struct {
-    // Metrics cho operations
-    OperationDuration *prometheus.HistogramVec
-    OperationErrors   *prometheus.CounterVec
-    OperationLatency  *prometheus.HistogramVec
+    // Asset metrics
+    AssetCreation     *prometheus.CounterVec
+    AssetStateChanges *prometheus.CounterVec
+    AssetOperations   *prometheus.HistogramVec
     
-    // Metrics cho token
+    // Token metrics
     TokenCreation     *prometheus.CounterVec
     TokenTransfers    *prometheus.CounterVec
-    TokenBalance      *prometheus.GaugeVec
+    TokenOperations   *prometheus.HistogramVec
     
-    // Metrics cho fraction
+    // Fraction metrics
     FractionCreation  *prometheus.CounterVec
     FractionTransfers *prometheus.CounterVec
-    FractionBalance   *prometheus.GaugeVec
     
-    // Metrics cho hệ thống
-    ActiveConnections *prometheus.GaugeVec
-    RequestRate       *prometheus.CounterVec
+    // System metrics
+    RequestLatency    *prometheus.HistogramVec
     ErrorRate         *prometheus.CounterVec
-    CacheHitRate      *prometheus.GaugeVec
-    
-    // Metrics cho audit
-    AuditLogVolume    *prometheus.CounterVec
-    AuditLogLatency   *prometheus.HistogramVec
+    ActiveConnections *prometheus.GaugeVec
 }
 
 // Khởi tạo metrics
 func NewMetrics() *Metrics {
     return &Metrics{
-        OperationDuration: prometheus.NewHistogramVec(
-            prometheus.HistogramOpts{
-                Name: "operation_duration_seconds",
-                Help: "Thời gian thực hiện operations tính bằng giây",
-                Buckets: prometheus.DefBuckets,
-            },
-            []string{"operation", "service"},
-        ),
-        OperationErrors: prometheus.NewCounterVec(
+        AssetCreation: prometheus.NewCounterVec(
             prometheus.CounterOpts{
-                Name: "operation_errors_total",
-                Help: "Tổng số lỗi operations",
+                Name: "asset_creation_total",
+                Help: "Tổng số tài sản được tạo",
             },
-            []string{"operation", "service", "error_type"},
+            []string{"type", "status"},
         ),
         TokenCreation: prometheus.NewCounterVec(
             prometheus.CounterOpts{
                 Name: "token_creation_total",
                 Help: "Tổng số token được tạo",
             },
-            []string{"token_type", "status"},
+            []string{"type", "status"},
         ),
-        TokenTransfers: prometheus.NewCounterVec(
-            prometheus.CounterOpts{
-                Name: "token_transfers_total",
-                Help: "Tổng số giao dịch chuyển token",
-            },
-            []string{"status"},
-        ),
-        ActiveConnections: prometheus.NewGaugeVec(
-            prometheus.GaugeOpts{
-                Name: "active_connections",
-                Help: "Số lượng kết nối đang hoạt động",
-            },
-            []string{"service"},
-        ),
-        FractionCreation: prometheus.NewCounterVec(
-            prometheus.CounterOpts{
-                Name: "fraction_creation_total",
-                Help: "Tổng số fraction được tạo",
-            },
-            []string{"asset_type", "status"},
-        ),
-        FractionTransfers: prometheus.NewCounterVec(
-            prometheus.CounterOpts{
-                Name: "fraction_transfers_total",
-                Help: "Tổng số giao dịch chuyển fraction",
-            },
-            []string{"status"},
-        ),
-        AuditLogVolume: prometheus.NewCounterVec(
-            prometheus.CounterOpts{
-                Name: "audit_log_volume_total",
-                Help: "Tổng số lượng log audit",
-            },
-            []string{"service", "operation", "level"},
-        ),
+        // ... other metrics
     }
 }
 ```
 
-#### 6.1.2 Điểm Thu Thập Metrics
+#### 3.3.2 Logging
 
 ```go
-// Ghi metrics cho operations
-func (s *tokenServiceImpl) recordMetrics(operation string, duration time.Duration, err error) {
-    s.metrics.OperationDuration.WithLabelValues(operation, "token_service").Observe(duration.Seconds())
-    if err != nil {
-        s.metrics.OperationErrors.WithLabelValues(operation, "token_service", getErrorType(err)).Inc()
-    }
-}
-
-// Ghi metrics cho token
-func (s *tokenServiceImpl) recordTokenMetrics(tokenType string, status string) {
-    s.metrics.TokenCreation.WithLabelValues(tokenType, status).Inc()
-}
-
-// Ghi metrics cho chuyển token
-func (s *tokenServiceImpl) recordTransferMetrics(status string) {
-    s.metrics.TokenTransfers.WithLabelValues(status).Inc()
-}
-
-// Ghi metrics cho kết nối
-func (s *tokenServiceImpl) recordConnectionMetrics(active int) {
-    s.metrics.ActiveConnections.WithLabelValues("token_service").Set(float64(active))
-}
-```
-
-### 6.2 Ghi Log
-
-#### 6.2.1 Cấu Hình Logging
-
-```go
-// Cấu hình logging
-type LogConfig struct {
-    Level      string   `yaml:"level"`
-    Format     string   `yaml:"format"`
-    OutputPaths []string `yaml:"output_paths"`
-    ErrorPaths  []string `yaml:"error_paths"`
-    MaxSize    int      `yaml:"max_size"`
-    MaxBackups int      `yaml:"max_backups"`
-    MaxAge     int      `yaml:"max_age"`
-    Compress   bool     `yaml:"compress"`
-}
-
-// Khởi tạo logger
-func setupLogger(config *LogConfig) (*zap.Logger, error) {
-    zapConfig := zap.NewProductionConfig()
-    
-    // Thiết lập log level
-    level, err := zapcore.ParseLevel(config.Level)
-    if err != nil {
-        return nil, fmt.Errorf("log level không hợp lệ: %w", err)
-    }
-    zapConfig.Level = zap.NewAtomicLevelAt(level)
-    
-    // Thiết lập đường dẫn output
-    zapConfig.OutputPaths = config.OutputPaths
-    zapConfig.ErrorOutputPaths = config.ErrorPaths
-    
-    // Cấu hình log rotation
-    zapConfig.EncoderConfig.TimeKey = "timestamp"
-    zapConfig.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
-    
-    return zapConfig.Build()
-}
-```
-
-#### 6.2.2 Structured Logging
-
-```go
-// Cấu trúc sự kiện log
+// Cấu trúc log event
 type LogEvent struct {
     TraceID    string                 `json:"trace_id"`
     Service    string                 `json:"service"`
@@ -755,11 +548,11 @@ type LogEvent struct {
     Timestamp  time.Time             `json:"timestamp"`
 }
 
-// Xử lý sự kiện log
-func (s *tokenServiceImpl) logEvent(level zapcore.Level, operation string, message string, err error, metadata map[string]interface{}) {
+// Xử lý log event
+func (s *serviceImpl) logEvent(level zapcore.Level, operation string, message string, err error, metadata map[string]interface{}) {
     event := &LogEvent{
         TraceID:    trace.SpanContextFromContext(s.ctx).TraceID().String(),
-        Service:    "token_service",
+        Service:    s.serviceName,
         Operation:  operation,
         Level:      level.String(),
         Message:    message,
@@ -788,156 +581,6 @@ func (s *tokenServiceImpl) logEvent(level zapcore.Level, operation string, messa
         event.Operation,
         event.Level,
     ).Inc()
-}
-```
-
-### 6.3 Bảng Điều Khiển Giám Sát
-
-#### 6.3.1 Cấu Hình Grafana Dashboard
-
-```json
-{
-  "dashboard": {
-    "id": null,
-    "title": "Token Service Dashboard",
-    "tags": ["token-service", "monitoring"],
-    "timezone": "browser",
-    "panels": [
-      {
-        "title": "Thời Gian Thực Hiện Operations",
-        "type": "graph",
-        "datasource": "Prometheus",
-        "targets": [
-          {
-            "expr": "rate(operation_duration_seconds_sum[5m]) / rate(operation_duration_seconds_count[5m])",
-            "legendFormat": "{{operation}}"
-          }
-        ]
-      },
-      {
-        "title": "Tỷ Lệ Lỗi",
-        "type": "graph",
-        "datasource": "Prometheus",
-        "targets": [
-          {
-            "expr": "rate(operation_errors_total[5m])",
-            "legendFormat": "{{operation}} - {{error_type}}"
-          }
-        ]
-      },
-      {
-        "title": "Operations Token",
-        "type": "graph",
-        "datasource": "Prometheus",
-        "targets": [
-          {
-            "expr": "rate(token_creation_total[5m])",
-            "legendFormat": "{{token_type}} - {{status}}"
-          },
-          {
-            "expr": "rate(token_transfers_total[5m])",
-            "legendFormat": "{{status}}"
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
-#### 6.3.2 Quy Tắc Cảnh Báo
-
-```yaml
-groups:
-- name: token_service_alerts
-  rules:
-  - alert: TỷLệLỗiCao
-    expr: rate(operation_errors_total[5m]) > 0.1
-    for: 5m
-    labels:
-      severity: warning
-    annotations:
-      summary: Phát hiện tỷ lệ lỗi cao
-      description: Tỷ lệ lỗi trên 10% trong 5 phút gần nhất
-
-  - alert: ĐộTrễCao
-    expr: rate(operation_duration_seconds_sum[5m]) / rate(operation_duration_seconds_count[5m]) > 1
-    for: 5m
-    labels:
-      severity: warning
-    annotations:
-      summary: Phát hiện độ trễ cao
-      description: Độ trễ operations trên 1 giây trong 5 phút gần nhất
-
-  - alert: DịchVụNgừngHoạtĐộng
-    expr: up{service="token_service"} == 0
-    for: 1m
-    labels:
-      severity: critical
-    annotations:
-      summary: Token service đã ngừng hoạt động
-      description: Token service đã ngừng hoạt động hơn 1 phút
-```
-
-### 6.4 Phân Tích Log
-
-#### 6.4.1 Cấu Hình ELK Stack
-
-```yaml
-# Cấu hình Filebeat
-filebeat.inputs:
-- type: log
-  enabled: true
-  paths:
-    - /var/log/token-service/*.log
-  fields:
-    service: token-service
-  json.keys_under_root: true
-  json.add_error_key: true
-
-# Cấu hình Logstash
-input {
-  beats {
-    port => 5044
-  }
-}
-
-filter {
-  json {
-    source => "message"
-  }
-  date {
-    match => [ "timestamp", "ISO8601" ]
-    target => "@timestamp"
-  }
-}
-
-output {
-  elasticsearch {
-    hosts => ["elasticsearch:9200"]
-    index => "token-service-%{+YYYY.MM.dd}"
-  }
-}
-
-# Mẫu chỉ mục Kibana
-{
-  "index_patterns": ["token-service-*"],
-  "settings": {
-    "number_of_shards": 3,
-    "number_of_replicas": 1
-  },
-  "mappings": {
-    "properties": {
-      "trace_id": { "type": "keyword" },
-      "service": { "type": "keyword" },
-      "operation": { "type": "keyword" },
-      "level": { "type": "keyword" },
-      "message": { "type": "text" },
-      "error": { "type": "text" },
-      "metadata": { "type": "object" },
-      "timestamp": { "type": "date" }
-    }
-  }
 }
 ```
 
