@@ -1,4 +1,3 @@
-
 # 📐 Architecture Design Document
 ### Digital Asset Management System
 
@@ -29,7 +28,7 @@ graph TD
         Gateway[Kong API Gateway]
         AuthN[AuthN Service]
         AuthZ[AuthZ Service]
-        DID[DID Middleware ACA-Py]
+        DID["DID Middleware<br/>ACA-Py"]
     end
 
     subgraph "Application Layer"
@@ -38,7 +37,7 @@ graph TD
     end
 
     subgraph "Blockchain Layer"
-        Fabric[Hyperledger Fabric + Token SDK]
+        Fabric["Hyperledger Fabric<br/>Token SDK"]
     end
 
     subgraph "Storage Layer"
@@ -156,9 +155,9 @@ sequenceDiagram
     participant Gateway as API Gateway (Kong)
     participant Asset as Asset Service
     participant AuthN as AuthN
-    participant DID as DID Middleware
+    participant DID as "DID Middleware"
     participant Token as Token Service
-    participant Fabric as Hyperledger Fabric
+    participant Fabric as "Hyperledger Fabric"
 
     User->>Web: Submit Tokenization Request
     Web->>Gateway: gRPC /tokenizeAsset
@@ -189,12 +188,12 @@ graph TD
             TokenPod[Token Service Pod]
             AuthNPod[AuthN Service]
             AuthZPod[AuthZ Service]
-            DIDPod[DID Middleware]
+            DIDPod["DID Middleware"]
         end
 
         subgraph Blockchain
-            FabricPeer1[Fabric Peer Org1]
-            FabricPeer2[Fabric Peer Org2]
+            FabricPeer1["Fabric Peer Org1"]
+            FabricPeer2["Fabric Peer Org2"]
             Orderer[Orderer Node]
         end
 
