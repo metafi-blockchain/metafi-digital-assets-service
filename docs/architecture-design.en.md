@@ -108,45 +108,66 @@ graph TD
 Sơ đồ dưới đây mô tả các thực thể chính (Asset, Token, DID, User) và mối quan hệ giữa chúng trong hệ thống Digital Asset Management.
 
 ```mermaid
-erDiagram
-    USER ||--o{ ASSET : owns
-    USER ||--o{ DID : "has"
-    ASSET ||--o{ TOKEN : "tokenized by"
-    ASSET }o--|| DID : "owned by"
-    TOKEN }o--|| DID : "issued to"
-    TOKEN }o--|| ASSET : "represents"
-    DID ||--o{ CREDENTIAL : "holds"
+classDiagram
+    %% User & Identity
+    class User {
+        +string user_id
+        +string email
+        +string did
+        +Role role
+        +bool kyc_verified
+    }
 
-    USER {
-        string id PK
-        string name
-        string email
+    class DID {
+        +string did_id
+        +string msp_id
+        +KYCStatus status
     }
-    DID {
-        string did PK
-        string user_id FK
-        string type
+
+    %% Asset & Token
+    class Asset {
+        +string asset_id
+        +string owner_did
+        +AssetType type
+        +string metadata_uri
+        +string status
+        +Timestamp created_at
     }
-    ASSET {
-        string id PK
-        string name
-        string metadata
-        string owner_did FK
-        string status
+
+    class Token {
+        +string token_id
+        +string asset_id
+        +uint total_supply
+        +string symbol
+        +uint decimals
+        +string name
     }
-    TOKEN {
-        string id PK
-        string asset_id FK
-        string owner_did FK
-        decimal amount
-        string status
+
+    %% Transaction & Ownership
+    class Transaction {
+        +string tx_id
+        +string from_did
+        +string to_did
+        +string token_id
+        +uint amount
+        +Timestamp created_at
     }
-    CREDENTIAL {
-        string id PK
-        string did FK
-        string type
-        string issued_at
+
+    class Ownership {
+        +string asset_id
+        +string did
+        +float percentage
+        +string ownership_type
     }
+
+    %% Relations
+    User --> DID : has
+    DID --> Asset : owns
+    Asset --> Token : is_tokenized_by
+    Token --> Transaction : involved_in
+    DID --> Transaction : initiates_or_receives
+    Asset --> Ownership : has
+    DID --> Ownership : owns_share
 ```
 
 **Giải thích:**
@@ -283,6 +304,6 @@ graph TD
 |---------|-------------|
 | ✅ Use Case Diagram | Đã thể hiện ở RD |
 | ✅ Component Diagram | Bao phủ trong phần "Component Design" |
-| ⏳ Domain Model Diagram | Có thể thêm nếu cần xác định rõ các thực thể: Asset, Token, DID |
-| ⏳ Event Flow Diagram | Đề xuất thêm khi có Kafka / NATS tích hợp |
+| ✅ Domain Model Diagram | Đã bổ sung, làm rõ các thực thể: Asset, Token, DID, User |
+| ⏳ Event Flow Diagram | Đề xuất bổ sung khi tích hợp Kafka / NATS để minh họa các event chính (AssetCreated, TokenMinted, OwnershipTransferred...) và các service liên quan |
 | ✅ Metrics / Logging Flow | Đã mô tả trong phần Monitoring
