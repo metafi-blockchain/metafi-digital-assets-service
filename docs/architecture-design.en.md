@@ -160,7 +160,7 @@ classDiagram
     }
 
     %% Relationships
-    User --> DID : mapped_to (1:1)
+    User --> DID : mapped 1-1
     DID --> Asset : owns
     Asset --> Token : is_tokenized_by
     Token --> Transaction : used_in
