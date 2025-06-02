@@ -113,7 +113,6 @@ classDiagram
     class User {
         +string user_id
         +string email
-        +string did
         +Role role
         +bool kyc_verified
     }
@@ -160,21 +159,22 @@ classDiagram
         +string ownership_type
     }
 
-    %% Relations
-    User --> DID : has
+    %% Relationships
+    User --> DID : mapped_to (1:1)
     DID --> Asset : owns
     Asset --> Token : is_tokenized_by
-    Token --> Transaction : involved_in
+    Token --> Transaction : used_in
     DID --> Transaction : initiates_or_receives
     Asset --> Ownership : has
     DID --> Ownership : owns_share
 ```
 
 **Giải thích:**
-- Một User có thể sở hữu nhiều Asset và nhiều DID.
+- Mỗi User chỉ có một DID (1-1 mapping).
+- Một User có thể sở hữu nhiều Asset (thông qua DID).
 - Asset được sở hữu bởi một DID, và có thể được token hóa thành nhiều Token.
-- Token đại diện cho quyền sở hữu/tài sản, liên kết với Asset và DID.
-- DID có thể giữ nhiều Credential (chứng chỉ, xác thực).
+- Token đại diện cho quyền sở hữu/tài sản, liên kết với Asset và tham gia các Transaction.
+- DID có thể là chủ sở hữu (Ownership) của nhiều Asset, và tham gia các Transaction.
 
 ---
 
