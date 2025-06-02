@@ -103,6 +103,58 @@ graph TD
 - Token SDK for managing token logic
 - Chaincode viết bằng Golang
 
+### 3.x 🗂️ Domain Model Diagram
+
+Sơ đồ dưới đây mô tả các thực thể chính (Asset, Token, DID, User) và mối quan hệ giữa chúng trong hệ thống Digital Asset Management.
+
+```mermaid
+erDiagram
+    USER ||--o{ ASSET : owns
+    USER ||--o{ DID : "has"
+    ASSET ||--o{ TOKEN : "tokenized by"
+    ASSET }o--|| DID : "owned by"
+    TOKEN }o--|| DID : "issued to"
+    TOKEN }o--|| ASSET : "represents"
+    DID ||--o{ CREDENTIAL : "holds"
+
+    USER {
+        string id PK
+        string name
+        string email
+    }
+    DID {
+        string did PK
+        string user_id FK
+        string type
+    }
+    ASSET {
+        string id PK
+        string name
+        string metadata
+        string owner_did FK
+        string status
+    }
+    TOKEN {
+        string id PK
+        string asset_id FK
+        string owner_did FK
+        decimal amount
+        string status
+    }
+    CREDENTIAL {
+        string id PK
+        string did FK
+        string type
+        string issued_at
+    }
+```
+
+**Giải thích:**
+- Một User có thể sở hữu nhiều Asset và nhiều DID.
+- Asset được sở hữu bởi một DID, và có thể được token hóa thành nhiều Token.
+- Token đại diện cho quyền sở hữu/tài sản, liên kết với Asset và DID.
+- DID có thể giữ nhiều Credential (chứng chỉ, xác thực).
+
 ---
 
 ## 4. 🗄️ Data & Storage Design
