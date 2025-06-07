@@ -18,7 +18,7 @@ graph TD
         Gateway[Kong API Gateway]
         AuthN[AuthN Service]
         AuthZ[AuthZ Service]
-        DID["DID Middleware<br/>ACA-Py"]
+        DID["DID Middleware<br/>Chaincode+AnonCreds+Fabric"]
         ExplorerService[Explorer Service]
     end
 
@@ -137,11 +137,11 @@ graph TD
   * Quản lý quyền
   * Policy enforcement
 
-* **DID Middleware (ACA-Py)**
+* **DID Middleware**
   * Quản lý danh tính (DID)
   * Quản lý chứng chỉ
   * Xác thực KYC
-  * Tích hợp với Indy Agent
+  * Tích hợp với chaincode, AnonCreds và Hyperledger Fabric
   * Cấp phát MSP Identity
 
 #### 1.2.3 Application Layer

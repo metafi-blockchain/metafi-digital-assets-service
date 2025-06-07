@@ -18,7 +18,7 @@ graph TD
         Gateway[Kong API Gateway]
         AuthN[AuthN Service]
         AuthZ[AuthZ Service]
-        DID["DID Middleware<br/>ACA-Py"]
+        DID["DID Middleware<br/>Chaincode+AnonCreds+Fabric"]
         ExplorerService[Explorer Service]
     end
 
@@ -28,7 +28,6 @@ graph TD
         Token[Token Service]
         Firefly[Firefly Service]
         Cacti[Cacti Service]
-        ExplorerServiceApp[Explorer Service]
         ACAPy[ACPy-Agent]
     end
 
@@ -83,7 +82,7 @@ graph TD
     Kafka --> Token
     Firefly --> Kafka
     Kafka --> Firefly
-    ExplorerServiceApp --> Firefly
+    ExplorerService --> Firefly
 ```
 
 ### 1.2 Layer Descriptions (Updated)
@@ -120,7 +119,7 @@ Saga Pattern is applied for complex financial flows (asset trading, transfer, cr
   * REST/gRPC client
   * SDK for popular languages
 
-#### 1.2.2 Middleware Layer
+#### 1.2.2 Middleware Layer (Updated)
 * **Kong API Gateway**
   * Routing management
   * Rate limiting
@@ -137,11 +136,11 @@ Saga Pattern is applied for complex financial flows (asset trading, transfer, cr
   * Permission management
   * Policy enforcement
 
-* **DID Middleware (ACA-Py)**
+* **DID Middleware**
   * Identity management (DID)
   * Certificate management
   * KYC verification
-  * Integration with Indy Agent
+  * Integration with chaincode, AnonCreds, and Hyperledger Fabric
   * MSP Identity issuance
 
 #### 1.2.3 Application Layer
