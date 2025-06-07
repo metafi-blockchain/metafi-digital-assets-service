@@ -22,23 +22,25 @@ graph TD
         Web[Web App]
         Mobile[Mobile App]
         API[API Client]
+        Explorer[UI Explorer]
     end
 
     subgraph "Middleware Layer"
         Gateway[Kong API Gateway]
         AuthN[AuthN Service]
         AuthZ[AuthZ Service]
-        DID["DID Middleware"]
+        DID["DID Service"]
     end
 
     subgraph "Application Layer"
         Asset[Asset Service]
         Token[Token Service]
+        Firefly[Firefly Service]
     end
 
     subgraph "Blockchain Layer"
         Fabric["Hyperledger Fabric<br/>Token SDK/Chaincode"]
-        Indy["Hyperledger Indy<br/>ACA-Py"]
+        PublicChain[Public Blockchain]
     end
 
     subgraph "Storage Layer"
@@ -50,6 +52,7 @@ graph TD
     Web --> Gateway
     Mobile --> Gateway
     API --> Gateway
+    Explorer --> Gateway
 
     Gateway --> AuthN
     Gateway --> AuthZ
@@ -61,12 +64,14 @@ graph TD
     DID --> Asset
 
     Asset --> Token
-    Token --> Fabric
+    Token --> Firefly
+    Firefly --> Fabric
+    Firefly --> PublicChain
 
     Asset --> DB
     Asset --> Cache
     Asset --> Storage
-    DID -->|via ACA-Py| Indy
+    DID -->|ACA-Py| Fabric
 ```
 
 ---
@@ -82,8 +87,8 @@ graph TD
 - Role-Based Access Control (RBAC)
 - Session & token management (via Redis)
 
-### 3.3 DID Middleware
-- Tích hợp với ACA-Py & Indy
+### 3.3 DID Service
+- Tích hợp với ACA-Py & AnonCreds
 - Quản lý định danh DID, định danh người dùng và chứng chỉ
 - Tạo/mapping định danh với keystore Hyperledger Fabric (MSP ID)
 
