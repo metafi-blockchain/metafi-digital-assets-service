@@ -60,6 +60,7 @@ graph TD
     subgraph "Blockchain Layer"
         Fabric["Hyperledger Fabric<br/>Token SDK/Chaincode"]
         PublicChain[Public Blockchain<br/>  Smart contract]
+        OtherBlockchain[(Other Blockchain)]
     end
 
     subgraph "Storage Layer"
