@@ -53,7 +53,8 @@ graph TD
         Asset[Asset Service]
         Token[Token Service]
         Firefly[Firefly Service]
-
+        ExplorerService[Explorer Service]
+        Cacti[Cacti Service]
     end
 
     subgraph "Blockchain Layer"
@@ -91,6 +92,7 @@ graph TD
     Token --> Firefly
     Firefly --> |fabconnect| Fabric
     Firefly --> |evm connect| PublicChain
+    Firefly --> Cacti
 
     Asset --> DB
     Asset --> Cache
@@ -105,6 +107,7 @@ graph TD
     Kafka --> Firefly
 
     ExplorerService --> Firefly
+    Cacti -->|Cross-chain| OtherBlockchain[(Other Blockchain)]
 ```
 
 ---
@@ -161,6 +164,12 @@ graph TD
 - Lưu trữ khóa bí mật, hash, chứng chỉ an toàn
 - Đảm bảo bảo mật cho các thao tác ký số, mã hóa dữ liệu
 - Tích hợp với các service cần truy xuất khóa (Asset, Token, Firefly...)
+
+### 3.11 Cacti Service
+- Đóng vai trò cầu nối cross-chain, tích hợp và tương tác với nhiều blockchain khác nhau thông qua Hyperledger Cacti.
+- Hỗ trợ các use case như cross-chain asset transfer, data sharing, cross-chain smart contract.
+- Kết nối với Firefly Service và các blockchain ngoài hệ thống (Other Blockchain).
+- Có thể giao tiếp bất đồng bộ với các service khác qua Kafka nếu cần.
 
 ### 3.x 🗂️ Domain Model Diagram theo Layered Architecture
 
