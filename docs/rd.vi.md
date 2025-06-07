@@ -185,6 +185,21 @@ graph TD
 - Xác thực KYC
 - Cấp phát MSP Identity
 
+#### 2.2.6 Firefly Service
+- Đóng vai trò cầu nối giữa Token Service và các blockchain (Fabric, Public Blockchain)
+- Chuẩn hóa, chuyển tiếp giao dịch token hóa, chuyển token, ghi nhận sự kiện on-chain/off-chain
+- Kết nối với Fabric qua fabconnect, với Public Blockchain qua evm connect
+- Hỗ trợ gửi/nhận sự kiện bất đồng bộ qua Kafka
+
+#### 2.2.7 Cacti Service
+- Gateway cross-chain, tích hợp Hyperledger Cacti
+- Hỗ trợ chuyển giao tài sản số, thực thi smart contract, đồng bộ dữ liệu giữa các blockchain khác nhau
+- Giao tiếp bất đồng bộ với các service khác qua Kafka
+
+#### 2.2.8 Event Streaming Layer
+- Kafka làm event bus trung tâm, hỗ trợ giao tiếp bất đồng bộ giữa các service
+- Đảm bảo khả năng mở rộng, tích hợp, và hỗ trợ các pattern như Saga, event sourcing
+
 ### 2.3 Luồng xử lý tài sản
 
 ```mermaid
@@ -260,6 +275,53 @@ sequenceDiagram
     Token-->>Asset: Status, tx_hash
     Asset-->>User: Transaction Complete
 ```
+
+### 2.5 Saga Pattern cho giao dịch tài chính phức tạp
+
+- Áp dụng Saga Pattern cho các flow như mua bán, chuyển nhượng tài sản, chuyển token, mirror cross-chain.
+- Đảm bảo tính nhất quán eventual consistency khi giao dịch phân tán qua nhiều service (Asset, Token, Firefly, Cacti, Blockchain).
+- Có thể triển khai theo hai hướng:
+  - **Orchestrator-based Saga:** Một service trung tâm điều phối các bước, rollback khi cần.
+  - **Choreography-based Saga:** Các service lắng nghe event (Kafka), tự động thực hiện bước của mình và phát event tiếp theo.
+- Ví dụ flow mua bán tài sản:
+  1. User gửi yêu cầu mua tài sản → Asset Service tạo order (PENDING)
+  2. Token Service lock token của người mua
+  3. Firefly Service thực hiện chuyển token on-chain
+  4. Asset Service cập nhật quyền sở hữu tài sản
+  5. Nếu thất bại ở bất kỳ bước nào: Orchestrator gọi rollback (unlock token, revert ownership...)
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Gateway
+    participant Asset
+    participant Token
+    participant Firefly
+    participant Fabric
+
+    User->>Gateway: Request Asset Purchase
+    Gateway->>Asset: Create Order (Saga Start)
+    Asset->>Token: Lock Token (Step 1)
+    Token-->>Asset: Token Locked
+    Asset->>Firefly: Transfer Token On-chain (Step 2)
+    Firefly->>Fabric: Mint/Transfer Token
+    Fabric-->>Firefly: Success/Fail
+    Firefly-->>Asset: Transfer Result
+    alt Success
+        Asset->>Asset: Update Ownership (Step 3)
+        Asset-->>Gateway: Purchase Success
+    else Failure
+        Asset->>Token: Compensate (Unlock Token)
+        Asset-->>Gateway: Purchase Failed
+    end
+```
+
+- Ưu điểm: Đảm bảo nhất quán eventual consistency, dễ tracking trạng thái giao dịch, tận dụng Kafka để phát event, lưu trạng thái Saga, hỗ trợ retry/compensate.
+
+### Lưu ý bổ sung cho các flow nghiệp vụ
+- Các flow như chuyển nhượng tài sản, chuyển token, mirror cross-chain đều nên áp dụng Saga Pattern để đảm bảo rollback an toàn khi có lỗi.
+- Các service Asset, Token, Firefly, Cacti đều cần hỗ trợ phát/nhận event qua Kafka.
+- Đề xuất bổ sung các trường trạng thái Saga, traceId vào log/audit để tracking.
 
 ## 3. Yêu cầu chức năng
 
@@ -749,12 +811,9 @@ graph TD
 
 Các chức năng/phân hệ sau đây sẽ được xem xét phát triển ở các giai đoạn tiếp theo:
 
-- **Phân phối lợi nhuận** (Profit Distribution/Dividend)
-- **Voting / Quyền biểu quyết theo sở hữu**
-- **Compliance Service** (Dịch vụ tuân thủ)
-- **Order Service** (Sổ lệnh, khớp lệnh, giao dịch trên sàn)
-- **Marketplace** (Sàn giao dịch tài sản, giao dịch fraction, đặt lệnh mua/bán)
-
-Các nội dung này sẽ được bổ sung chi tiết trong các bản cập nhật tài liệu tiếp theo khi hệ thống mở rộng phạm vi.
+- **Tích hợp Public Blockchain qua Firefly Service**
+- **Tích hợp cross-chain, bridge, oracle qua Cacti Service**
+- **Mở rộng dashboard, truy vấn lịch sử, phân tích dữ liệu tài sản/token cho người dùng cuối**
+- **Tích hợp các pattern event sourcing, CQRS, Saga cho các nghiệp vụ tài chính phức tạp**
 
 *Cập nhật: 31/05/2025*
