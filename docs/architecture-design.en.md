@@ -124,6 +124,27 @@ graph TD
 - Token SDK for managing token logic
 - Chaincode viết bằng Golang
 
+### 3.7 Firefly Service
+- Đóng vai trò cầu nối giữa Token Service và các blockchain (Fabric, Public Blockchain)
+- Chuẩn hóa, chuyển tiếp giao dịch token hóa, chuyển token, ghi nhận sự kiện on-chain/off-chain
+- Kết nối với Fabric qua fabconnect, với Public Blockchain qua evm connect
+- Hỗ trợ gửi/nhận sự kiện bất đồng bộ qua Kafka
+
+### 3.8 Explorer Service
+- Cung cấp API tổng hợp, chuẩn hóa dữ liệu cho UI Explorer
+- Truy vấn, tổng hợp dữ liệu từ các service khác (Asset, Token, Firefly)
+- Hỗ trợ các truy vấn lịch sử, trạng thái, sự kiện tài sản/token cho người dùng cuối
+
+### 3.9 Public Blockchain
+- Lưu trữ, xác thực các giao dịch công khai, minh bạch
+- Triển khai smart contract cho các nghiệp vụ mở rộng (nếu có)
+- Kết nối với Firefly Service qua evm connect
+
+### 3.10 AWS Key/Hash Vaults
+- Lưu trữ khóa bí mật, hash, chứng chỉ an toàn
+- Đảm bảo bảo mật cho các thao tác ký số, mã hóa dữ liệu
+- Tích hợp với các service cần truy xuất khóa (Asset, Token, Firefly...)
+
 ### 3.x 🗂️ Domain Model Diagram
 
 Sơ đồ dưới đây mô tả các thực thể chính (Asset, Token, DID, User) và mối quan hệ giữa chúng trong hệ thống Digital Asset Management.
