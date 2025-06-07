@@ -55,6 +55,7 @@ graph TD
         Firefly[Firefly Service]
         ExplorerService[Explorer Service]
         Cacti[Cacti Service]
+        ACAPy[ACPy-Agent]
     end
 
     subgraph "Blockchain Layer"
@@ -97,7 +98,10 @@ graph TD
     Asset --> DB
     Asset --> Cache
     Asset --> Storage
-    DID -->|ACA-Py| Fabric
+    DID -->ACAPy
+    ACAPy -->Fabric
+
+
 
     Asset --> Kafka
     Kafka --> Asset
