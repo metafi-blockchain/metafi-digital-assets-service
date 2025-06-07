@@ -145,13 +145,13 @@ graph TD
 - Đảm bảo bảo mật cho các thao tác ký số, mã hóa dữ liệu
 - Tích hợp với các service cần truy xuất khóa (Asset, Token, Firefly...)
 
-### 3.x 🗂️ Domain Model Diagram
+### 3.x 🗂️ Domain Model Diagram theo Layered Architecture
 
-Sơ đồ dưới đây mô tả các thực thể chính (Asset, Token, DID, User) và mối quan hệ giữa chúng trong hệ thống Digital Asset Management.
+Sơ đồ dưới đây mô tả các thực thể chính và phân lớp theo kiến trúc tầng:
 
 ```mermaid
 classDiagram
-    %% User & Identity
+    %% Client Layer
     class User {
         +string user_id
         +string email
@@ -159,13 +159,14 @@ classDiagram
         +bool kyc_verified
     }
 
+    %% Middleware Layer
     class DID {
         +string did_id
         +string msp_id
         +KYCStatus status
     }
 
-    %% Asset & Token
+    %% Application Layer
     class Asset {
         +string asset_id
         +string owner_did
@@ -174,7 +175,6 @@ classDiagram
         +string status
         +Timestamp created_at
     }
-
     class Token {
         +string token_id
         +string asset_id
@@ -183,8 +183,14 @@ classDiagram
         +uint decimals
         +string name
     }
+    class Ownership {
+        +string asset_id
+        +string did
+        +float percentage
+        +string ownership_type
+    }
 
-    %% Transaction & Ownership
+    %% Blockchain Layer
     class Transaction {
         +string tx_id
         +string from_did
@@ -192,13 +198,6 @@ classDiagram
         +string token_id
         +uint amount
         +Timestamp created_at
-    }
-
-    class Ownership {
-        +string asset_id
-        +string did
-        +float percentage
-        +string ownership_type
     }
 
     %% Relationships
@@ -211,12 +210,12 @@ classDiagram
     DID --> Ownership : owns_share
 ```
 
-**Giải thích:**
-- Mỗi User chỉ có một DID (1-1 mapping).
-- Một User có thể sở hữu nhiều Asset (thông qua DID).
-- Asset được sở hữu bởi một DID, và có thể được token hóa thành nhiều Token.
-- Token đại diện cho quyền sở hữu/tài sản, liên kết với Asset và tham gia các Transaction.
-- DID có thể là chủ sở hữu (Ownership) của nhiều Asset, và tham gia các Transaction.
+**Chú thích:**
+- **Client Layer:** User
+- **Middleware Layer:** DID
+- **Application Layer:** Asset, Token, Ownership
+- **Blockchain Layer:** Transaction
+- Các mối quan hệ thể hiện luồng dữ liệu và quyền sở hữu giữa các tầng.
 
 ---
 
