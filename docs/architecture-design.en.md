@@ -30,13 +30,14 @@ graph TD
         AuthN[AuthN Service]
         AuthZ[AuthZ Service]
         DID["DID Service"]
+        ExplorerService[Explorer Service]
     end
 
     subgraph "Application Layer"
         Asset[Asset Service]
         Token[Token Service]
         Firefly[Firefly Service]
-        ExplorerService[Explorer Service]
+
     end
 
     subgraph "Blockchain Layer"
@@ -84,6 +85,7 @@ graph TD
     Kafka --> Token
     Firefly --> Kafka
     Kafka --> Firefly
+    ExplorerService --> Kafka
 
     ExplorerService --> Firefly
 ```
