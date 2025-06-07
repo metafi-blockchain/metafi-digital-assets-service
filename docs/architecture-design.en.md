@@ -36,11 +36,12 @@ graph TD
         Asset[Asset Service]
         Token[Token Service]
         Firefly[Firefly Service]
+        APIUIMW[API UI Middleware]
     end
 
     subgraph "Blockchain Layer"
         Fabric["Hyperledger Fabric<br/>Token SDK/Chaincode"]
-        PublicChain[Public Blockchain]
+        PublicChain[Public Blockchain<br/>  Smart contract]
     end
 
     subgraph "Storage Layer"
@@ -56,7 +57,7 @@ graph TD
     Web --> Gateway
     Mobile --> Gateway
     API --> Gateway
-    Explorer --> Gateway
+    Explorer --> APIUIMW
 
     Gateway --> AuthN
     Gateway --> AuthZ
@@ -83,6 +84,10 @@ graph TD
     Kafka --> Token
     Firefly --> Kafka
     Kafka --> Firefly
+
+    APIUIMW --> Asset
+    APIUIMW --> Token
+    APIUIMW --> Firefly
 ```
 
 ---
