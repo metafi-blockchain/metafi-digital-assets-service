@@ -90,9 +90,10 @@ graph TD
 
     Asset --> |gRPC|Token
     Token --> Firefly
-    Firefly --> |fabconnect| Fabric
-    Firefly --> |evm connect| PublicChain
-    Firefly --> Cacti
+    Token --> Cacti
+    Cacti -->|fabconnect| Fabric
+    Cacti -->|evm connect| PublicChain
+    Cacti -->|Cross-chain| OtherBlockchain[(Other Blockchain)]
 
     Asset --> DB
     Asset --> Cache
