@@ -58,13 +58,13 @@ graph TD
         AuthZ[AuthZ Service]
         DID["DID Service"]
         ExplorerService[Explorer Service]
+
     end
 
     subgraph "Application Layer"
         Asset[Asset Service]
         Token[Token Service]
         Firefly[Firefly Service]
-        ExplorerServiceApp[Explorer Service]
         Cacti[Cacti Service]
         ACAPy[ACPy-Agent]
     end
@@ -117,7 +117,7 @@ graph TD
     Kafka --> Token
     Firefly --> Kafka
     Kafka --> Firefly
-    ExplorerServiceApp --> Firefly
+    ExplorerService --> Firefly
 ```
 
 ### 2.3 Mô tả các tầng kiến trúc (bổ sung)
