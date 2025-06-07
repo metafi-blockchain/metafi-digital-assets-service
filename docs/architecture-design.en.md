@@ -3,7 +3,16 @@
 
 ---
 
-## 1. 📘 Overview
+## 1. �� Overview
+
+Hệ thống được triển khai theo mô hình kiến trúc:
+- **Microservices Architecture:** Các thành phần chức năng được tách biệt thành các service độc lập, dễ mở rộng, triển khai và bảo trì.
+- **Layered Architecture (Kiến trúc phân tầng):** Chia thành các tầng Client, Middleware, Application, Blockchain, Storage, Event Streaming, giúp tách biệt trách nhiệm và tối ưu hóa luồng dữ liệu.
+- **Event-driven Architecture:** Sử dụng Kafka làm event bus trung tâm, hỗ trợ giao tiếp bất đồng bộ, tăng khả năng mở rộng và tích hợp.
+- **Hybrid On-chain/Off-chain:** Kết hợp lưu trữ, xác thực dữ liệu trên blockchain (Fabric, Public Chain) và lưu trữ off-chain (PostgreSQL, IPFS/MinIO).
+- **Cloud-native & Secure:** Hỗ trợ triển khai trên nền tảng cloud/Kubernetes, tích hợp các best practice về bảo mật (mTLS, RBAC, Key Vaults), monitoring, logging.
+
+Các pattern này giúp hệ thống đảm bảo tính linh hoạt, mở rộng, bảo mật, dễ tích hợp với các hệ sinh thái blockchain và dịch vụ bên ngoài.
 
 Hệ thống Digital Asset Management là nền tảng quản lý, token hóa và giao dịch tài sản số, tích hợp đa tầng với các thành phần chính:
 - **Client Layer:** Web App, Mobile App, UI Explorer cho người dùng cuối.
