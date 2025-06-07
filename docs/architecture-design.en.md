@@ -164,11 +164,24 @@ graph TD
 - Đảm bảo bảo mật cho các thao tác ký số, mã hóa dữ liệu
 - Tích hợp với các service cần truy xuất khóa (Asset, Token, Firefly...)
 
-### 3.11 Cacti Service
-- Đóng vai trò cầu nối cross-chain, tích hợp và tương tác với nhiều blockchain khác nhau thông qua Hyperledger Cacti.
-- Hỗ trợ các use case như cross-chain asset transfer, data sharing, cross-chain smart contract.
-- Kết nối với Firefly Service và các blockchain ngoài hệ thống (Other Blockchain).
-- Có thể giao tiếp bất đồng bộ với các service khác qua Kafka nếu cần.
+### 3.11 Cacti Service – Cross-Chain Gateway
+
+**Chức năng chính:**
+Cacti Service đóng vai trò như một cầu nối cross-chain giữa hệ thống và các blockchain bên ngoài, thông qua Hyperledger Cacti – nền tảng hỗ trợ tích hợp blockchain đa chuỗi (Fabric, Ethereum, Corda, Besu…).
+
+⸻
+
+✅ **Nhiệm vụ và Use Case chính**
+- Cross-chain asset transfer: Cho phép chuyển giao tài sản số giữa các blockchain (ví dụ: từ Hyperledger Fabric sang Ethereum).
+- Cross-chain smart contract execution: Thực thi chuỗi hành động giữa smart contracts trên nhiều blockchain.
+- Cross-chain data sharing: Đồng bộ hoặc truy vấn dữ liệu giữa các chuỗi (VD: xác minh danh tính trên chuỗi khác).
+
+⸻
+
+🔗 **Tích hợp hệ thống**
+- Kết nối với FireFly Service để nhận lệnh hoặc truyền thông tin cần xử lý liên chuỗi.
+- Giao tiếp với các blockchain ngoài hệ thống (Other Blockchain) thông qua adapter của Hyperledger Cacti.
+- Hỗ trợ giao tiếp bất đồng bộ với các service khác (AssetService, TokenService, DID…) thông qua Kafka để đảm bảo tính tách biệt và mở rộng.
 
 ### 3.x 🗂️ Domain Model Diagram theo Layered Architecture
 
