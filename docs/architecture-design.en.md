@@ -57,7 +57,6 @@ graph TD
 
     Web --> Gateway
     Mobile --> Gateway
-    API --> Gateway
     Explorer --> Gateway
 
     Gateway --> AuthN
