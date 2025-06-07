@@ -312,8 +312,9 @@ graph TD
             FabricPeer1["Fabric Peer Org1"]
             FabricPeer2["Fabric Peer Org2"]
             Orderer[Orderer Node]
-            PublicChainPod[Public Blockchain Pod]
         end
+
+        PublicChainConnectPod[Public Blockchain Connect]
 
         subgraph Storage
             DBPod[(PostgreSQL)]
@@ -335,7 +336,7 @@ graph TD
         AssetPod -->|gRPC| TokenPod
         TokenPod --> FireflyPod
         FireflyPod -->|fabconnect| FabricPeer1
-        FireflyPod -->|evm connect| PublicChainPod
+        FireflyPod -->|evm connect| PublicChainConnectPod
         ExplorerPod --> FireflyPod
 
         AssetPod --> DBPod
