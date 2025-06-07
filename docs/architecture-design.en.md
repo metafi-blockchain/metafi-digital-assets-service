@@ -335,6 +335,9 @@ graph TD
             KafkaPod[(Kafka)]
         end
 
+        KafkaPod[(Kafka)]
+        PublicChainConnectPod[Public Blockchain Connect]
+
         GatewayPod -->|gRPC| AssetPod
         GatewayPod --> AuthNPod
         GatewayPod --> AuthZPod
