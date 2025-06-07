@@ -316,21 +316,28 @@ graph TD
             DIDPod[DID Service]
         end
 
+
+
+
+    end
+
+    subgraph Block Chain Cluster
         subgraph Blockchain
             FabricPeer1["Fabric Peer Org1"]
             FabricPeer2["Fabric Peer Org2"]
             Orderer[Orderer Node]
         end
 
-        subgraph Storage
-            DBPod[(PostgreSQL)]
-            RedisPod[(Redis)]
-            IPFSPod[(IPFS / MinIO)]
-            KeyVaultsPod[(AWS Key/Hash Vaults)]
-        end
+    end
+    subgraph Storage
+        DBPod[(PostgreSQL)]
+        RedisPod[(Redis)]
+        IPFSPod[(IPFS / MinIO)]
+        KeyVaultsPod[(AWS Key/Hash Vaults)]
     end
 
-    KafkaPod[(Kafka)]
+
+
     PublicChainConnectPod[Public Blockchain Connect]
     KeyVaultsPod[(AWS Key/Hash Vaults)]
 
@@ -366,3 +373,16 @@ graph TD
     ExplorerPod --> KafkaPod
     KafkaPod --> ExplorerPod
 ```
+
+## 10. Optional Extensions
+
+| Diagram | Description |
+|---------|-------------|
+| ✅ Use Case Diagram | Đã thể hiện ở RD |
+| ✅ Component Diagram | Bao phủ trong phần "Component Design" |
+| ✅ Domain Model Diagram | Đã bổ sung, làm rõ các thực thể: Asset, Token, DID, User, Transaction, Ownership |
+| ✅ Event Flow Diagram | Đã bổ sung, minh họa các event chính (AssetCreated, TokenMinted, OwnershipTransferred...) và các service liên quan qua Kafka |
+| ✅ Metrics / Logging Flow | Đã mô tả trong phần Monitoring |
+| ⏳ Public Blockchain Integration | Mở rộng tích hợp các smart contract, bridge, oracle với public chain qua Firefly |
+| ⏳ Key/Hash Vault Integration | Bổ sung các luồng bảo mật, quản lý khóa, ký số qua AWS Key/Hash Vaults |
+| ⏳ Explorer/Analytics Extension | Mở rộng dashboard, truy vấn lịch sử, phân tích dữ liệu tài sản/token cho người dùng cuối |
