@@ -60,7 +60,6 @@ graph TD
     subgraph "Blockchain Layer"
         Fabric["Hyperledger Fabric<br/>Token SDK/Chaincode"]
         PublicChain[Public Blockchain<br/>  Smart contract]
-        OtherBlockchain[(Other Blockchain)]
     end
 
     subgraph "Storage Layer"
@@ -94,7 +93,6 @@ graph TD
     Token --> Cacti
     Cacti -->|fabconnect| Fabric
     Cacti -->|evm connect| PublicChain
-    Cacti -->|Cross-chain| OtherBlockchain[(Other Blockchain)]
 
     Asset --> DB
     Asset --> Cache
@@ -109,7 +107,6 @@ graph TD
     Kafka --> Firefly
 
     ExplorerService --> Firefly
-    Cacti -->|Cross-chain| OtherBlockchain[(Other Blockchain)]
 ```
 
 ---
