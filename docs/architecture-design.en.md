@@ -21,7 +21,6 @@ graph TD
     subgraph "Client Layer"
         Web[Web App]
         Mobile[Mobile App]
-        API[API Client]
         Explorer[UI Explorer]
     end
 
