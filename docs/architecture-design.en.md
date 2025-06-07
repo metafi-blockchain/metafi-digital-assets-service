@@ -5,12 +5,20 @@
 
 ## 1. 📘 Overview
 
-Hệ thống Digital Asset Management gồm các thành phần phục vụ:
-- Token hóa tài sản (Asset Tokenization)
-- Xác thực định danh DID
-- Phân quyền và xác thực người dùng
-- Tương tác với blockchain Hyperledger Fabric
-- Lưu trữ dữ liệu off-chain: metadata, tài liệu, cache
+Hệ thống Digital Asset Management là nền tảng quản lý, token hóa và giao dịch tài sản số, tích hợp đa tầng với các thành phần chính:
+- **Client Layer:** Web App, Mobile App, UI Explorer cho người dùng cuối.
+- **Middleware Layer:** API Gateway (Kong), AuthN/AuthZ Service, DID Service, Explorer Service giúp chuẩn hóa, xác thực và phân quyền truy cập.
+- **Application Layer:** Asset Service, Token Service, Firefly Service (cầu nối blockchain), xử lý nghiệp vụ tài sản, token hóa, kết nối blockchain.
+- **Blockchain Layer:** Hyperledger Fabric (private), Public Blockchain (smart contract) cho lưu trữ, xác thực giao dịch on-chain.
+- **Storage Layer:** PostgreSQL, Redis, IPFS/MinIO, AWS Key/Hash Vaults cho lưu trữ dữ liệu, file, khóa bảo mật.
+- **Event Streaming Layer:** Kafka hỗ trợ giao tiếp sự kiện bất đồng bộ giữa các service.
+
+Hệ thống hỗ trợ:
+- Token hóa tài sản vật lý/số, quản lý quyền sở hữu, giao dịch minh bạch.
+- Xác thực định danh phi tập trung (DID), phân quyền RBAC, bảo mật mTLS.
+- Tích hợp đa blockchain (Fabric, Public Chain) qua Firefly Service.
+- Chuẩn hóa dữ liệu cho UI/Explorer, hỗ trợ truy vấn lịch sử, trạng thái tài sản.
+- Mở rộng dễ dàng với event-driven, microservices, cloud-native.
 
 ---
 
@@ -369,6 +377,9 @@ graph TD
 |---------|-------------|
 | ✅ Use Case Diagram | Đã thể hiện ở RD |
 | ✅ Component Diagram | Bao phủ trong phần "Component Design" |
-| ✅ Domain Model Diagram | Đã bổ sung, làm rõ các thực thể: Asset, Token, DID, User |
+| ✅ Domain Model Diagram | Đã bổ sung, làm rõ các thực thể: Asset, Token, DID, User, Transaction, Ownership |
 | ⏳ Event Flow Diagram | Đề xuất bổ sung khi tích hợp Kafka / NATS để minh họa các event chính (AssetCreated, TokenMinted, OwnershipTransferred...) và các service liên quan |
-| ✅ Metrics / Logging Flow | Đã mô tả trong phần Monitoring
+| ✅ Metrics / Logging Flow | Đã mô tả trong phần Monitoring |
+| ⏳ Public Blockchain Integration | Mở rộng tích hợp các smart contract, bridge, oracle với public chain qua Firefly |
+| ⏳ Key/Hash Vault Integration | Bổ sung các luồng bảo mật, quản lý khóa, ký số qua AWS Key/Hash Vaults |
+| ⏳ Explorer/Analytics Extension | Mở rộng dashboard, truy vấn lịch sử, phân tích dữ liệu tài sản/token cho người dùng cuối |
