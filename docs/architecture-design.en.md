@@ -85,7 +85,6 @@ graph TD
     Firefly --> Kafka
     Kafka --> Firefly
 
-    Explorer --> ExplorerService
     ExplorerService --> Firefly
 ```
 
