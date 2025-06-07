@@ -36,7 +36,7 @@ graph TD
         Asset[Asset Service]
         Token[Token Service]
         Firefly[Firefly Service]
-        APIUIMW[API UI Middleware]
+        ExplorerService[Explorer Service]
     end
 
     subgraph "Blockchain Layer"
@@ -57,7 +57,7 @@ graph TD
     Web --> Gateway
     Mobile --> Gateway
     API --> Gateway
-    Explorer --> APIUIMW
+    Explorer --> Gateway
 
     Gateway --> AuthN
     Gateway --> AuthZ
@@ -85,9 +85,8 @@ graph TD
     Firefly --> Kafka
     Kafka --> Firefly
 
-    APIUIMW --> Asset
-    APIUIMW --> Token
-    APIUIMW --> Firefly
+    Explorer --> ExplorerService
+    ExplorerService --> Firefly
 ```
 
 ---
