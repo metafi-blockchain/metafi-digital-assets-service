@@ -322,54 +322,48 @@ graph TD
             Orderer[Orderer Node]
         end
 
-        PublicChainConnectPod[Public Blockchain Connect]
-
         subgraph Storage
             DBPod[(PostgreSQL)]
             RedisPod[(Redis)]
             IPFSPod[(IPFS / MinIO)]
             KeyVaultsPod[(AWS Key/Hash Vaults)]
         end
-
-        subgraph Event Streaming Layer
-            KafkaPod[(Kafka)]
-        end
-
-        KafkaPod[(Kafka)]
-        PublicChainConnectPod[Public Blockchain Connect]
-
-        GatewayPod -->|gRPC| AssetPod
-        GatewayPod --> AuthNPod
-        GatewayPod --> AuthZPod
-        GatewayPod --> DIDPod
-        GatewayPod --> ExplorerPod
-
-        AssetPod -->|gRPC| TokenPod
-        TokenPod --> FireflyPod
-        FireflyPod -->|fabconnect| FabricPeer1
-        FireflyPod -->|evm connect| PublicChainConnectPod
-        ExplorerPod --> FireflyPod
-
-        AssetPod --> DBPod
-        TokenPod --> DBPod
-        AuthNPod --> RedisPod
-        AuthZPod --> RedisPod
-        DIDPod --> RedisPod
-        AssetPod --> IPFSPod
-        TokenPod --> IPFSPod
-        FireflyPod --> KeyVaultsPod
-        AssetPod --> KeyVaultsPod
-        TokenPod --> KeyVaultsPod
-
-        AssetPod --> KafkaPod
-        KafkaPod --> AssetPod
-        TokenPod --> KafkaPod
-        KafkaPod --> TokenPod
-        FireflyPod --> KafkaPod
-        KafkaPod --> FireflyPod
-        ExplorerPod --> KafkaPod
-        KafkaPod --> ExplorerPod
     end
+
+    KafkaPod[(Kafka)]
+    PublicChainConnectPod[Public Blockchain Connect]
+
+    GatewayPod -->|gRPC| AssetPod
+    GatewayPod --> AuthNPod
+    GatewayPod --> AuthZPod
+    GatewayPod --> DIDPod
+    GatewayPod --> ExplorerPod
+
+    AssetPod -->|gRPC| TokenPod
+    TokenPod --> FireflyPod
+    FireflyPod -->|fabconnect| FabricPeer1
+    FireflyPod -->|evm connect| PublicChainConnectPod
+    ExplorerPod --> FireflyPod
+
+    AssetPod --> DBPod
+    TokenPod --> DBPod
+    AuthNPod --> RedisPod
+    AuthZPod --> RedisPod
+    DIDPod --> RedisPod
+    AssetPod --> IPFSPod
+    TokenPod --> IPFSPod
+    FireflyPod --> KeyVaultsPod
+    AssetPod --> KeyVaultsPod
+    TokenPod --> KeyVaultsPod
+
+    AssetPod --> KafkaPod
+    KafkaPod --> AssetPod
+    TokenPod --> KafkaPod
+    KafkaPod --> TokenPod
+    FireflyPod --> KafkaPod
+    KafkaPod --> FireflyPod
+    ExplorerPod --> KafkaPod
+    KafkaPod --> ExplorerPod
 ```
 
 ---
@@ -381,7 +375,7 @@ graph TD
 | ✅ Use Case Diagram | Đã thể hiện ở RD |
 | ✅ Component Diagram | Bao phủ trong phần "Component Design" |
 | ✅ Domain Model Diagram | Đã bổ sung, làm rõ các thực thể: Asset, Token, DID, User, Transaction, Ownership |
-| ⏳ Event Flow Diagram | Đề xuất bổ sung khi tích hợp Kafka / NATS để minh họa các event chính (AssetCreated, TokenMinted, OwnershipTransferred...) và các service liên quan |
+| ✅ Event Flow Diagram | Đã bổ sung, minh họa các event chính (AssetCreated, TokenMinted, OwnershipTransferred...) và các service liên quan qua Kafka |
 | ✅ Metrics / Logging Flow | Đã mô tả trong phần Monitoring |
 | ⏳ Public Blockchain Integration | Mở rộng tích hợp các smart contract, bridge, oracle với public chain qua Firefly |
 | ⏳ Key/Hash Vault Integration | Bổ sung các luồng bảo mật, quản lý khóa, ký số qua AWS Key/Hash Vaults |
