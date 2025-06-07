@@ -1,8 +1,8 @@
 # Technical Design Document - Digital Asset Management System
 
-## 1. System Architecture
+## 1. System Architecture (Updated)
 
-### 1.1 High-Level Architecture
+### 1.1 High-Level Architecture (Updated)
 
 ```mermaid
 graph TD
@@ -10,7 +10,7 @@ graph TD
     subgraph "Client Layer"
         Web[Web App]
         Mobile[Mobile App]
-        API[API Client]
+        Explorer[UI Explorer]
     end
 
     %% Middleware Layer
@@ -18,58 +18,86 @@ graph TD
         Gateway[Kong API Gateway]
         AuthN[AuthN Service]
         AuthZ[AuthZ Service]
-        DID[DID Middleware<br/>ACA-Py]
+        DID["DID Middleware<br/>ACA-Py"]
+        ExplorerService[Explorer Service]
     end
 
     %% Application Layer
     subgraph "Application Layer"
         Asset[Asset Service]
         Token[Token Service]
+        Firefly[Firefly Service]
+        Cacti[Cacti Service]
+        ExplorerServiceApp[Explorer Service]
+        ACAPy[ACPy-Agent]
     end
 
     %% Blockchain Layer
     subgraph "Blockchain Layer"
-        Fabric[Fabric Network<br/>Token SDK]
-        Indy[Hyperledger Indy]
+        Fabric["Hyperledger Fabric<br/>Token SDK/Chaincode"]
+        PublicChain["Public Blockchain<br/>Smart contract"]
     end
 
     %% Storage Layer
     subgraph "Storage Layer"
-        DB[(PostgreSQL<br/>Database)]
-        Cache[(Redis Cache)]
+        DB[(PostgreSQL)]
+        Cache[(Redis)]
         Storage[(IPFS / MinIO)]
+        KeyVaults[AWS Key/Hash Vaults]
     end
 
-    %% Flows from Clients
+    %% Event Streaming Layer
+    subgraph "Event Streaming Layer"
+        Kafka[(Kafka)]
+    end
+
     Web --> Gateway
     Mobile --> Gateway
-    API --> Gateway
+    Explorer --> Gateway
 
-    %% Gateway routing
     Gateway --> AuthN
     Gateway --> AuthZ
     Gateway --> Asset
     Gateway --> DID
+    Gateway --> ExplorerService
 
-    %% Auth middleware interaction
-    AuthN --> Asset
-    AuthZ --> Asset
-    DID --> Asset
+    AuthN --> |gRPC|Asset
+    AuthZ -->|gRPC|Asset
+    DID --> |gRPC|Asset
 
-    %% AssetService integration
-    Asset --> Token
+    Asset --> |gRPC|Token
+    Token --> Firefly
+    Token --> Cacti
+    Cacti -->|fabconnect| Fabric
+    Cacti -->|evm connect| PublicChain
 
-    %% Token → Blockchain
-    Token --> Fabric
-
-    %% DID interaction with Indy (off-chain)
-    DID -->|ACA-Py API| DIDAgent[(Indy Agent)] --> Indy
-
-    %% Asset data persistence
     Asset --> DB
     Asset --> Cache
     Asset --> Storage
+    DID -->ACAPy
+    ACAPy -->Fabric
+
+    Asset --> Kafka
+    Kafka --> Asset
+    Token --> Kafka
+    Kafka --> Token
+    Firefly --> Kafka
+    Kafka --> Firefly
+    ExplorerServiceApp --> Firefly
 ```
+
+### 1.2 Layer Descriptions (Updated)
+
+- **Client Layer:** End-user interfaces (web, mobile, explorer).
+- **Middleware Layer:** API routing, authentication, authorization, identity, API normalization, mTLS security.
+- **Application Layer:** Business logic (asset, tokenization, blockchain bridge, cross-chain, data aggregation, event-driven).
+- **Blockchain Layer:** On-chain storage and validation (Fabric, Public Chain), smart contract execution.
+- **Storage Layer:** Data, file, metadata, cache, key vaults.
+- **Event Streaming Layer:** Asynchronous communication, event sourcing, Saga Pattern, extensibility via Kafka.
+
+### 1.3 Saga Pattern & Event-Driven Architecture
+
+Saga Pattern is applied for complex financial flows (asset trading, transfer, cross-chain, etc.) to ensure eventual consistency across distributed services. Services communicate asynchronously via Kafka, supporting both orchestrator-based and choreography-based Saga. This enables safe rollback, compensation, and robust distributed transaction management.
 
 ### 1.2 Component Overview
 
