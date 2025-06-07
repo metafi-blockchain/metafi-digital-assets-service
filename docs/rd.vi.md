@@ -29,117 +29,109 @@ Xây dựng hệ thống quản lý tài sản số (Digital Asset Service) tíc
 - Quản trị viên hệ thống
 - Đối tác và bên thứ ba
 
-## 2. Kiến trúc hệ thống
+## 2. Kiến trúc hệ thống (cập nhật)
 
-### 2.1 Sơ đồ hệ thống tổng quan
+### 2.1 Kiến trúc phân tầng tổng quan
 
-#### 2.1.1 Sơ đồ high-level
+Hệ thống được thiết kế theo kiến trúc phân tầng (Layered Architecture), microservices, event-driven, hybrid on-chain/off-chain, cloud-native và bảo mật cao:
 
-```mermaid
-graph LR
-    subgraph "Client Layer"
-        Web[Web App]
-        Mobile[Mobile App]
-        API[API Client]
-    end
+- **Client Layer:** Web App, Mobile App, UI Explorer cho người dùng cuối.
+- **Middleware Layer:** API Gateway (Kong), AuthN/AuthZ Service, DID Service, Explorer Service giúp chuẩn hóa, xác thực và phân quyền truy cập.
+- **Application Layer:** Asset Service, Token Service, Firefly Service (cầu nối blockchain), Cacti Service (cross-chain), Explorer Service, xử lý nghiệp vụ tài sản, token hóa, kết nối blockchain.
+- **Blockchain Layer:** Hyperledger Fabric (private), Public Blockchain (smart contract) cho lưu trữ, xác thực giao dịch on-chain.
+- **Storage Layer:** PostgreSQL, Redis, IPFS/MinIO, AWS Key/Hash Vaults cho lưu trữ dữ liệu, file, khóa bảo mật.
+- **Event Streaming Layer:** Kafka hỗ trợ giao tiếp sự kiện bất đồng bộ giữa các service.
 
-    subgraph "Middleware Layer"
-        Gateway[API Gateway]
-        AuthN[AuthN Service]
-        AuthZ[AuthZ Service]
-        DID[DID Service]
-    end
-
-    subgraph "Application Layer"
-        Asset[Asset Service]
-        Token[Token Service]
-    end
-
-    subgraph "Blockchain Layer"
-        Fabric[Fabric Network]
-    end
-
-    Web --> Gateway
-    Mobile --> Gateway
-    API --> Gateway
-
-    Gateway --> AuthN
-    Gateway --> AuthZ
-    Gateway --> Asset
-
-    AuthN --> Asset
-    AuthZ --> Asset
-    DID --> Asset
-
-    Asset --> Token
-    Token --> Fabric
-
-    %% Interface Labels
-    Gateway -.->|"Client ↔ Gateway"| Asset
-    Asset -.->|"Asset ↔ Token Service"| Token
-    Token -.->|"Token ↔ Fabric"| Fabric
-    DID -.->|"DID ↔ Asset Service"| Asset
-```
-
-#### 2.1.2 Sơ đồ chi tiết
+### 2.2 Sơ đồ hệ thống tổng quan (cập nhật)
 
 ```mermaid
 graph TD
     subgraph "Client Layer"
         Web[Web App]
         Mobile[Mobile App]
-        API[API Client]
+        Explorer[UI Explorer]
     end
 
-    subgraph "Gateway Layer"
-        Gateway[API Gateway]
-    end
-
-    subgraph "Service Layer"
+    subgraph "Middleware Layer"
+        Gateway[Kong API Gateway]
         AuthN[AuthN Service]
         AuthZ[AuthZ Service]
-        DID[DID Service]
+        DID["DID Service"]
+        ExplorerService[Explorer Service]
+    end
+
+    subgraph "Application Layer"
         Asset[Asset Service]
         Token[Token Service]
+        Firefly[Firefly Service]
+        ExplorerServiceApp[Explorer Service]
+        Cacti[Cacti Service]
+        ACAPy[ACPy-Agent]
     end
 
     subgraph "Blockchain Layer"
-        Fabric[Fabric Network]
+        Fabric["Hyperledger Fabric\nToken SDK/Chaincode"]
+        PublicChain["Public Blockchain\nSmart contract"]
     end
 
     subgraph "Storage Layer"
-        AssetDB[(Asset Database)]
-        TokenDB[(Token Database)]
-        Cache[(Redis Cache)]
-        Storage[(IPFS/MinIO)]
+        DB[(PostgreSQL)]
+        Cache[(Redis)]
+        Storage[(IPFS / MinIO)]
+        KeyVaults[AWS Key/Hash Vaults]
+    end
+
+    subgraph "Event Streaming Layer"
+        Kafka[(Kafka)]
     end
 
     Web --> Gateway
     Mobile --> Gateway
-    API --> Gateway
+    Explorer --> Gateway
 
     Gateway --> AuthN
     Gateway --> AuthZ
     Gateway --> Asset
+    Gateway --> DID
+    Gateway --> ExplorerService
 
-    Asset --> AuthN
-    Asset --> AuthZ
-    Asset --> DID
-    Asset --> Token
+    AuthN --> |gRPC|Asset
+    AuthZ -->|gRPC|Asset
+    DID --> |gRPC|Asset
 
-    Token --> Fabric
-    DID --> Fabric
+    Asset --> |gRPC|Token
+    Token --> Firefly
+    Token --> Cacti
+    Cacti -->|fabconnect| Fabric
+    Cacti -->|evm connect| PublicChain
 
-    Asset --> AssetDB
+    Asset --> DB
     Asset --> Cache
     Asset --> Storage
+    DID -->ACAPy
+    ACAPy -->Fabric
 
-    Token --> TokenDB
+    Asset --> Kafka
+    Kafka --> Asset
+    Token --> Kafka
+    Kafka --> Token
+    Firefly --> Kafka
+    Kafka --> Firefly
+    ExplorerServiceApp --> Firefly
 ```
 
-### 2.2 Các thành phần chính
+### 2.3 Mô tả các tầng kiến trúc (bổ sung)
 
-#### 2.2.1 Asset Service
+- **Client Layer:** Giao diện người dùng cuối (web, mobile, explorer).
+- **Middleware Layer:** Định tuyến API, xác thực, phân quyền, chuẩn hóa truy cập, bảo mật mTLS.
+- **Application Layer:** Xử lý nghiệp vụ tài sản, token hóa, cầu nối blockchain, cross-chain, tổng hợp dữ liệu, tích hợp event-driven.
+- **Blockchain Layer:** Lưu trữ, xác thực giao dịch on-chain (Fabric, Public Chain), thực thi smart contract.
+- **Storage Layer:** Lưu trữ dữ liệu, file, metadata, cache, key vaults.
+- **Event Streaming Layer:** Giao tiếp bất đồng bộ, event sourcing, Saga Pattern, tích hợp mở rộng qua Kafka.
+
+### 2.4 Các thành phần chính
+
+#### 2.4.1 Asset Service
 - Quản lý thông tin và metadata của tài sản (real estate, CD, fund...)
 - Xác thực DID chủ sở hữu tài sản khi tạo và cập nhật
 - Kích hoạt quá trình token hóa bằng cách gọi Token Service khi tài sản được phê duyệt
@@ -162,7 +154,7 @@ graph TD
   - Cho phép chủ sở hữu cập nhật và gửi lại từ trạng thái AwaitingFix
   - Lưu lịch sử các lần từ chối và yêu cầu sửa đổi
 
-#### 2.2.2 Token Service
+#### 2.4.2 Token Service
 - Chịu trách nhiệm toàn bộ về vòng đời token (mint, burn, transfer, query balance, transaction history)
 - Tương tác trực tiếp với Hyperledger Fabric thông qua chaincode chuẩn ERC-20 hoặc mô-đun Token SDK
 - Nhận yêu cầu token hóa từ Asset Service và xác nhận lại DID trước khi mint token
@@ -170,37 +162,37 @@ graph TD
 - Hỗ trợ mở rộng: Marketplace (đặt lệnh giao dịch), Staking, Quản lý cổ tức/phân phối lợi nhuận
 - Cung cấp gRPC/REST interface cho các dịch vụ khác (Asset, Wallet, Marketplace) để truy cập dữ liệu token
 
-#### 2.2.3 AuthN Service
+#### 2.4.3 AuthN Service
 - Xác thực người dùng
 - Quản lý phiên
 - Cấp phát JWT
 
-#### 2.2.4 AuthZ Service
+#### 2.4.4 AuthZ Service
 - Phân quyền truy cập
 - Quản lý vai trò
 - Kiểm tra quyền
 
-#### 2.2.5 DID Service
+#### 2.4.5 DID Service
 - Quản lý danh tính
 - Xác thực KYC
 - Cấp phát MSP Identity
 
-#### 2.2.6 Firefly Service
+#### 2.4.6 Firefly Service
 - Đóng vai trò cầu nối giữa Token Service và các blockchain (Fabric, Public Blockchain)
 - Chuẩn hóa, chuyển tiếp giao dịch token hóa, chuyển token, ghi nhận sự kiện on-chain/off-chain
 - Kết nối với Fabric qua fabconnect, với Public Blockchain qua evm connect
 - Hỗ trợ gửi/nhận sự kiện bất đồng bộ qua Kafka
 
-#### 2.2.7 Cacti Service
+#### 2.4.7 Cacti Service
 - Gateway cross-chain, tích hợp Hyperledger Cacti
 - Hỗ trợ chuyển giao tài sản số, thực thi smart contract, đồng bộ dữ liệu giữa các blockchain khác nhau
 - Giao tiếp bất đồng bộ với các service khác qua Kafka
 
-#### 2.2.8 Event Streaming Layer
+#### 2.4.8 Event Streaming Layer
 - Kafka làm event bus trung tâm, hỗ trợ giao tiếp bất đồng bộ giữa các service
 - Đảm bảo khả năng mở rộng, tích hợp, và hỗ trợ các pattern như Saga, event sourcing
 
-### 2.3 Luồng xử lý tài sản
+### 2.5 Luồng xử lý tài sản
 
 ```mermaid
 sequenceDiagram
@@ -250,7 +242,7 @@ sequenceDiagram
     end
 ```
 
-### 2.4 Luồng giao dịch
+### 2.6 Luồng giao dịch
 
 ```mermaid
 sequenceDiagram
@@ -276,7 +268,7 @@ sequenceDiagram
     Asset-->>User: Transaction Complete
 ```
 
-### 2.5 Saga Pattern cho giao dịch tài chính phức tạp
+### 2.7 Saga Pattern cho giao dịch tài chính phức tạp
 
 - Áp dụng Saga Pattern cho các flow như mua bán, chuyển nhượng tài sản, chuyển token, mirror cross-chain.
 - Đảm bảo tính nhất quán eventual consistency khi giao dịch phân tán qua nhiều service (Asset, Token, Firefly, Cacti, Blockchain).
