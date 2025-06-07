@@ -48,6 +48,7 @@ graph TD
         DB[(PostgreSQL)]
         Cache[(Redis)]
         Storage[(IPFS / MinIO)]
+        KeyVaults[AWS Key/Hash Vaults]
     end
 
     subgraph "Event Streaming Layer"
