@@ -28,7 +28,6 @@ graph TD
         Token[Token Service]
         Firefly[Firefly Service]
         Cacti[Cacti Service]
-        ExplorerServiceApp[Explorer Service]
         ACAPy[ACPy-Agent]
     end
 
@@ -83,7 +82,7 @@ graph TD
     Kafka --> Token
     Firefly --> Kafka
     Kafka --> Firefly
-    ExplorerServiceApp --> Firefly
+    ExplorerService --> Firefly
 ```
 
 ### 1.2 Mô tả các tầng kiến trúc
