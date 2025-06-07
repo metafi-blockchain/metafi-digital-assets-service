@@ -69,8 +69,8 @@ graph TD
 
     Asset --> Token
     Token --> Firefly
-    Firefly --> Fabric
-    Firefly --> PublicChain
+    Firefly --> |fabconnect| Fabric
+    Firefly --> |evm connect| PublicChain
 
     Asset --> DB
     Asset --> Cache
@@ -317,7 +317,7 @@ graph TD
         AssetPod --> KafkaPod
         KafkaPod --> AssetPod
         TokenPod --> KafkaPod
-        KafkaPod --> TokenPod
+        TokenPod --> KafkaPod
         AuthZPod --> KafkaPod
         AuthNPod --> KafkaPod
         DIDPod --> KafkaPod
