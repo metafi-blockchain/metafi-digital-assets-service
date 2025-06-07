@@ -270,9 +270,9 @@ sequenceDiagram
     participant Gateway as API Gateway (Kong)
     participant Asset as Asset Service
     participant AuthN as AuthN
-    participant DID as "DID Middleware"
+    participant DID as DID Service
     participant Token as Token Service
-    participant Fabric as "Hyperledger Fabric"
+    participant Fabric as Hyperledger Fabric
 
     User->>Web: Submit Tokenization Request
     Web->>Gateway: gRPC /tokenizeAsset
@@ -301,22 +301,25 @@ graph TD
         subgraph Services
             AssetPod[Asset Service Pod]
             TokenPod[Token Service Pod]
+            FireflyPod[Firefly Service Pod]
+            ExplorerPod[Explorer Service Pod]
             AuthNPod[AuthN Service]
             AuthZPod[AuthZ Service]
-            DIDPod["DID Middleware"]
+            DIDPod[DID Service]
         end
 
         subgraph Blockchain
             FabricPeer1["Fabric Peer Org1"]
             FabricPeer2["Fabric Peer Org2"]
             Orderer[Orderer Node]
-            Indy[Indy Node]
+            PublicChainPod[Public Blockchain Pod]
         end
 
         subgraph Storage
             DBPod[(PostgreSQL)]
             RedisPod[(Redis)]
             IPFSPod[(IPFS / MinIO)]
+            KeyVaultsPod[(AWS Key/Hash Vaults)]
         end
 
         subgraph Event Streaming Layer
@@ -327,25 +330,33 @@ graph TD
         GatewayPod --> AuthNPod
         GatewayPod --> AuthZPod
         GatewayPod --> DIDPod
+        GatewayPod --> ExplorerPod
 
-        AssetPod --> TokenPod
-        TokenPod --> FabricPeer1
-        DIDPod -->|HTTP| ACA-PyPod
+        AssetPod -->|gRPC| TokenPod
+        TokenPod --> FireflyPod
+        FireflyPod -->|fabconnect| FabricPeer1
+        FireflyPod -->|evm connect| PublicChainPod
+        ExplorerPod --> FireflyPod
 
         AssetPod --> DBPod
         TokenPod --> DBPod
         AuthNPod --> RedisPod
+        AuthZPod --> RedisPod
         DIDPod --> RedisPod
         AssetPod --> IPFSPod
-        ACA-PyPod --> Indy
+        TokenPod --> IPFSPod
+        FireflyPod --> KeyVaultsPod
+        AssetPod --> KeyVaultsPod
+        TokenPod --> KeyVaultsPod
 
         AssetPod --> KafkaPod
         KafkaPod --> AssetPod
         TokenPod --> KafkaPod
-        TokenPod --> KafkaPod
-        AuthZPod --> KafkaPod
-        AuthNPod --> KafkaPod
-        DIDPod --> KafkaPod
+        KafkaPod --> TokenPod
+        FireflyPod --> KafkaPod
+        KafkaPod --> FireflyPod
+        ExplorerPod --> KafkaPod
+        KafkaPod --> ExplorerPod
     end
 ```
 
