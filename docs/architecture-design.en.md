@@ -64,6 +64,8 @@ graph TD
     Gateway --> Asset
     Gateway --> DID
 
+    Gateway --> ExplorerService
+
     AuthN --> Asset
     AuthZ --> Asset
     DID --> Asset
