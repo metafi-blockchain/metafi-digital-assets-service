@@ -66,11 +66,11 @@ graph TD
 
     Gateway --> ExplorerService
 
-    AuthN --> Asset
-    AuthZ --> Asset
-    DID --> Asset
+    AuthN --> |gRPC|Asset
+    AuthZ -->|gRPC|Asset
+    DID --> |gRPC|Asset
 
-    Asset --> Token
+    Asset --> |gRPC|Token
     Token --> Firefly
     Firefly --> |fabconnect| Fabric
     Firefly --> |evm connect| PublicChain
