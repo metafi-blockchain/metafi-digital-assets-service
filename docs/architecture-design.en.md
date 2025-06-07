@@ -49,6 +49,10 @@ graph TD
         Storage[(IPFS / MinIO)]
     end
 
+    subgraph "Event Streaming Layer"
+        Kafka[(Kafka)]
+    end
+
     Web --> Gateway
     Mobile --> Gateway
     API --> Gateway
@@ -72,6 +76,13 @@ graph TD
     Asset --> Cache
     Asset --> Storage
     DID -->|ACA-Py| Fabric
+
+    Asset --> Kafka
+    Kafka --> Asset
+    Token --> Kafka
+    Kafka --> Token
+    Firefly --> Kafka
+    Kafka --> Firefly
 ```
 
 ---
@@ -283,6 +294,10 @@ graph TD
             IPFSPod[(IPFS / MinIO)]
         end
 
+        subgraph Event Streaming Layer
+            KafkaPod[(Kafka)]
+        end
+
         GatewayPod -->|gRPC| AssetPod
         GatewayPod --> AuthNPod
         GatewayPod --> AuthZPod
@@ -298,6 +313,14 @@ graph TD
         DIDPod --> RedisPod
         AssetPod --> IPFSPod
         ACA-PyPod --> Indy
+
+        AssetPod --> KafkaPod
+        KafkaPod --> AssetPod
+        TokenPod --> KafkaPod
+        KafkaPod --> TokenPod
+        AuthZPod --> KafkaPod
+        AuthNPod --> KafkaPod
+        DIDPod --> KafkaPod
     end
 ```
 
