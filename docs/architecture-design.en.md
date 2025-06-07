@@ -364,14 +364,14 @@ graph TD
     AssetPod --> KeyVaultsPod
     TokenPod --> KeyVaultsPod
 
-    AssetPod --> KafkaPod
-    KafkaPod --> AssetPod
-    TokenPod --> KafkaPod
-    KafkaPod --> TokenPod
-    FireflyPod --> KafkaPod
-    KafkaPod --> FireflyPod
-    ExplorerPod --> KafkaPod
-    KafkaPod --> ExplorerPod
+    AssetPod --> Kafka
+    Kafka --> AssetPod
+    TokenPod --> Kafka
+    Kafka --> TokenPod
+    FireflyPod --> Kafka
+    Kafka --> FireflyPod
+    ExplorerPod --> Kafka
+    Kafka --> ExplorerPod
 ```
 
 ## 10. Optional Extensions
